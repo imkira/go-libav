@@ -37,8 +37,11 @@ go get -u github.com/imkira/go-libav/avutil
 
 # Documentation
 
-For advanced usage, make sure to check the
-[available documentation here](http://godoc.org/github.com/imkira/go-libav).
+For advanced usage, make sure to check the following documentation:
+[avcodec](http://godoc.org/github.com/imkira/go-libav/avcodec)
+[avfilter](http://godoc.org/github.com/imkira/go-libav/avfilter)
+[avformat](http://godoc.org/github.com/imkira/go-libav/avformat)
+[avutil](http://godoc.org/github.com/imkira/go-libav/avutil)
 
 # Examples
 
