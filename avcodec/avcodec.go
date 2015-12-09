@@ -101,6 +101,11 @@ package avcodec
 //  return &arr[n];
 //}
 //
+//static const char* get_list_at(const char **list, const int idx)
+//{
+//  return list[idx];
+//}
+//
 // #cgo pkg-config: libavcodec libavutil
 import "C"
 
@@ -272,6 +277,17 @@ const (
 	SubtitlesEncodingModeDoNothing  SubtitlesEncodingMode = C.FF_SUB_CHARENC_MODE_DO_NOTHING
 	SubtitlesEncodingModeAutomatic  SubtitlesEncodingMode = C.FF_SUB_CHARENC_MODE_AUTOMATIC
 	SubtitlesEncodingModePreDecoder SubtitlesEncodingMode = C.FF_SUB_CHARENC_MODE_PRE_DECODER
+)
+
+type CodecProps int
+
+const (
+	CodecPropIntraOnly CodecProps = C.AV_CODEC_PROP_INTRA_ONLY
+	CodecPropLossy     CodecProps = C.AV_CODEC_PROP_LOSSY
+	CodecPropLossless  CodecProps = C.AV_CODEC_PROP_LOSSLESS
+	CodecPropReorder   CodecProps = C.AV_CODEC_PROP_REORDER
+	CodecPropBitmapSub CodecProps = C.AV_CODEC_PROP_BITMAP_SUB
+	CodecPropTextSub   CodecProps = C.AV_CODEC_PROP_TEXT_SUB
 )
 
 type PacketSideData struct {
@@ -1825,4 +1841,88 @@ func cStringSplit(cStr *C.char, sep string) []string {
 		return nil
 	}
 	return strings.Split(str, sep)
+}
+
+type CodecDescriptor struct {
+	CAVCodecDescriptor *C.AVCodecDescriptor
+}
+
+func NewCodecDescriptorFromC(cCodec unsafe.Pointer) *CodecDescriptor {
+	return &CodecDescriptor{CAVCodecDescriptor: (*C.AVCodecDescriptor)(cCodec)}
+}
+
+func (c *CodecDescriptor) ID() CodecID {
+	return CodecID(c.CAVCodecDescriptor.id)
+}
+
+func (c *CodecDescriptor) CodecType() avutil.MediaType {
+	return (avutil.MediaType)(c.CAVCodecDescriptor._type)
+}
+
+func (c *CodecDescriptor) Name() string {
+	str, _ := c.NameOk()
+	return str
+}
+
+func (c *CodecDescriptor) NameOk() (string, bool) {
+	return cStringToStringOk(c.CAVCodecDescriptor.name)
+}
+
+func (c *CodecDescriptor) LongName() string {
+	str, _ := c.LongNameOk()
+	return str
+}
+
+func (c *CodecDescriptor) LongNameOk() (string, bool) {
+	return cStringToStringOk(c.CAVCodecDescriptor.long_name)
+}
+
+func (c *CodecDescriptor) Props() CodecProps {
+	return CodecProps(c.CAVCodecDescriptor.props)
+}
+
+func (c *CodecDescriptor) MimeTypes() []string {
+	if c.CAVCodecDescriptor.mime_types == nil {
+		return nil
+	}
+	var mimeTypes []string
+	for i := 0; ; i++ {
+		mimeType := C.get_list_at(c.CAVCodecDescriptor.mime_types, C.int(i))
+		if mimeType == nil {
+			break
+		}
+		mimeTypes = append(mimeTypes, C.GoString(mimeType))
+	}
+	return mimeTypes
+}
+
+func CodecDescriptorByID(codecID CodecID) *CodecDescriptor {
+	cCodecDescriptor := C.avcodec_descriptor_get((C.enum_AVCodecID)(codecID))
+	if cCodecDescriptor == nil {
+		return nil
+	}
+	return NewCodecDescriptorFromC(unsafe.Pointer(cCodecDescriptor))
+}
+
+func CodecDescriptorByName(name string) *CodecDescriptor {
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	cCodecDescriptor := C.avcodec_descriptor_get_by_name(cName)
+	if cCodecDescriptor == nil {
+		return nil
+	}
+	return NewCodecDescriptorFromC(unsafe.Pointer(cCodecDescriptor))
+}
+
+func CodecDescriptors() []*CodecDescriptor {
+	var prev *C.AVCodecDescriptor
+	var descriptors []*CodecDescriptor
+	for {
+		prev = C.avcodec_descriptor_next(prev)
+		if prev == nil {
+			break
+		}
+		descriptors = append(descriptors, NewCodecDescriptorFromC(unsafe.Pointer(prev)))
+	}
+	return descriptors
 }
