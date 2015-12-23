@@ -1206,3 +1206,11 @@ func getOptionError(code C.int) error {
 	}
 	return NewErrorFromCode(ErrorCode(code))
 }
+
+func Rescale(a, b, c int64) int64 {
+	return int64(C.av_rescale(C.int64_t(a), C.int64_t(b), C.int64_t(c)))
+}
+
+func RescaleByRationals(a int64, bq, cq *Rational) int64 {
+	return int64(C.av_rescale_q(C.int64_t(a), bq.CAVRational, cq.CAVRational))
+}
