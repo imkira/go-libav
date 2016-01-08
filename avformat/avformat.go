@@ -433,6 +433,11 @@ func (s *Stream) SetTimeBase(timeBase *avutil.Rational) {
 	s.CAVStream.time_base.den = (C.int)(timeBase.Denominator())
 }
 
+func (s *Stream) SampleAspectRatio() *avutil.Rational {
+	sar := &s.CAVStream.sample_aspect_ratio
+	return avutil.NewRational(int(sar.num), int(sar.den))
+}
+
 func (s *Stream) SetSampleAspectRatio(aspectRatio *avutil.Rational) {
 	s.CAVStream.sample_aspect_ratio.num = (C.int)(aspectRatio.Numerator())
 	s.CAVStream.sample_aspect_ratio.den = (C.int)(aspectRatio.Denominator())
@@ -485,6 +490,11 @@ func (s *Stream) SetAverageFrameRate(frameRate *avutil.Rational) {
 func (s *Stream) RealFrameRate() *avutil.Rational {
 	r := C.av_stream_get_r_frame_rate(s.CAVStream)
 	return avutil.NewRationalFromC(unsafe.Pointer(&r))
+}
+
+func (s *Stream) SetRealFrameRate(frameRate *avutil.Rational) {
+	s.CAVStream.r_frame_rate.num = (C.int)(frameRate.Numerator())
+	s.CAVStream.r_frame_rate.den = (C.int)(frameRate.Denominator())
 }
 
 type Context struct {
@@ -761,6 +771,16 @@ func (ctx *Context) Dump(streamIndex int, url string, isOutput bool) {
 	cURL := C.CString(url)
 	defer C.free(unsafe.Pointer(cURL))
 	C.av_dump_format(ctx.CAVFormatContext, C.int(streamIndex), cURL, cIsOutput)
+}
+
+func (ctx *Context) GuessFrameRate(stream *Stream, frame *avutil.Frame) *avutil.Rational {
+	cStream := (*C.AVStream)(unsafe.Pointer(stream.CAVStream))
+	var cFrame *C.AVFrame
+	if frame != nil {
+		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+	}
+	r := C.av_guess_frame_rate(ctx.CAVFormatContext, cStream, cFrame)
+	return avutil.NewRationalFromC(unsafe.Pointer(&r))
 }
 
 type IOContext struct {

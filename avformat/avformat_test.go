@@ -257,3 +257,59 @@ func TestSetFileName(t *testing.T) {
 		t.Fatalf("[TestSetFileName] result = %s, NG, expected = %s", result, buff.String())
 	}
 }
+
+func TestSampleAspectRatio(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+	stream, err := ctx.NewStream()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := avutil.NewRational(1, 5)
+	stream.SetSampleAspectRatio(expected)
+	result := stream.SampleAspectRatio()
+	if result.Numerator() != expected.Numerator() || result.Denominator() != expected.Denominator() {
+		t.Fatalf("[TestSampleAspectRatio] result = %d/%d, NG, expected = %d/%d",
+			result.Numerator(), result.Denominator(), expected.Numerator(), expected.Denominator())
+	}
+}
+
+func TestRealFrameRate(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+	stream, err := ctx.NewStream()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := avutil.NewRational(30, 1)
+	stream.SetRealFrameRate(expected)
+	result := stream.RealFrameRate()
+	if result.Numerator() != expected.Numerator() || result.Denominator() != expected.Denominator() {
+		t.Fatalf("[TestRealFrameRate] result = %d/%d, NG, expected = %d/%d",
+			result.Numerator(), result.Denominator(), expected.Numerator(), expected.Denominator())
+	}
+}
+
+func TestGuessFrameRate(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+
+	fixture := fixturePath("sample_mpeg4.mp4")
+	if err := ctx.OpenInput(fixture, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.CloseInput()
+
+	if err := ctx.FindStreamInfo(nil); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := [][]int{{0, 0}, {30, 1}}
+	for i, stream := range ctx.Streams() {
+		result := ctx.GuessFrameRate(stream, nil)
+		if result.Numerator() != expected[i][0] || result.Denominator() != expected[i][1] {
+			t.Fatalf("[TestGuessFrameRate] result = %d/%d, NG, expected = %d/%d",
+				result.Numerator(), result.Denominator(), expected[i][0], expected[i][1])
+		}
+	}
+}
