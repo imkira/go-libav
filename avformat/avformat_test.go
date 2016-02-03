@@ -45,6 +45,20 @@ func TestFindInputByShortName(t *testing.T) {
 	}
 }
 
+func TestInputFlags(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+	fixture := fixturePath("sample_mpeg4.mp4")
+	err := ctx.OpenInput(fixture, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := ctx.Input().Flags()
+	if result != FlagNoByteSeek {
+		t.Fatalf("[TestFlags] result = %v, NG, expected = %v", result, FlagNoByteSeek)
+	}
+}
+
 func TestProbeInput(t *testing.T) {
 	pd := NewProbeData()
 	defer pd.Free()
@@ -255,6 +269,20 @@ func TestSetFileName(t *testing.T) {
 	result := ctx.FileName()
 	if result != string(buff.Bytes()[:1023]) {
 		t.Fatalf("[TestSetFileName] result = %s, NG, expected = %s", result, buff.String())
+	}
+}
+
+func TestContextSeekToTimestamp(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+	fixture := fixturePath("sample_mpeg4.mp4")
+	err := ctx.OpenInput(fixture, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := ctx.StartTime()
+	if err := ctx.SeekToTimestamp(-1, -9223372036854775808, start, start, SeekFlagNone); err != nil {
+		t.Fatalf("[TestSeekToTimestamp] result(error) = %v, NG, expected no error", err)
 	}
 }
 

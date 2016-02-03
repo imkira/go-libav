@@ -6,6 +6,7 @@ package avutil
 //#include <libavutil/pixdesc.h>
 //#include <libavutil/opt.h>
 //#include <libavutil/frame.h>
+//#include <libavutil/parseutils.h>
 //
 //#ifdef AV_LOG_TRACE
 //#define GO_AV_LOG_TRACE AV_LOG_TRACE
@@ -1213,4 +1214,22 @@ func Rescale(a, b, c int64) int64 {
 
 func RescaleByRationals(a int64, bq, cq *Rational) int64 {
 	return int64(C.av_rescale_q(C.int64_t(a), bq.CAVRational, cq.CAVRational))
+}
+
+func ParseTime(timestr string, duration bool) (int64, error) {
+	cTimestr := C.CString(timestr)
+	defer C.free(unsafe.Pointer(cTimestr))
+	x := C.int64_t(0)
+	code := C.av_parse_time(&x, cTimestr, boolToCInt(duration))
+	if code < 0 {
+		return 0, NewErrorFromCode(ErrorCode(code))
+	}
+	return int64(x), nil
+}
+
+func boolToCInt(b bool) C.int {
+	if b {
+		return 1
+	}
+	return 0
 }
