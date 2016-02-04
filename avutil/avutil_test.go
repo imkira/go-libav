@@ -346,3 +346,49 @@ func TestChannelLayouts(t *testing.T) {
 		t.Fatalf("Expecting channel layouts")
 	}
 }
+
+type parseTimeTestData struct {
+	timestr  string
+	duration bool
+	expected int64
+}
+
+func TestParseTime(t *testing.T) {
+	datas := []*parseTimeTestData{
+		&parseTimeTestData{
+			timestr:  "1.5",
+			duration: true,
+			expected: 1500000,
+		},
+		&parseTimeTestData{
+			timestr:  "-1.5",
+			duration: true,
+			expected: -1500000,
+		},
+		&parseTimeTestData{
+			timestr:  "01:30",
+			duration: true,
+			expected: 90000000,
+		},
+		&parseTimeTestData{
+			timestr:  "01:01:30",
+			duration: true,
+			expected: 3690000000,
+		},
+		&parseTimeTestData{
+			timestr:  "2000-01-01 00:00:00Z",
+			duration: false,
+			expected: 946684800000000,
+		},
+	}
+
+	for _, data := range datas {
+		result, err := ParseTime(data.timestr, data.duration)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result != data.expected {
+			t.Fatalf("[TestParseTime] result=%d, NG, expected=%d", result, data.expected)
+		}
+	}
+}

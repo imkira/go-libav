@@ -139,6 +139,16 @@ const (
 	IOFlagDirect    IOFlags = C.AVIO_FLAG_DIRECT
 )
 
+type SeekFlags int
+
+const (
+	SeekFlagNone     SeekFlags = 0
+	SeekFlagBackward SeekFlags = C.AVSEEK_FLAG_BACKWARD
+	SeekFlagByte     SeekFlags = C.AVSEEK_FLAG_BYTE
+	SeekFlagAny      SeekFlags = C.AVSEEK_FLAG_ANY
+	SeekFlagFrame    SeekFlags = C.AVSEEK_FLAG_FRAME
+)
+
 func init() {
 	RegisterAll()
 }
@@ -214,6 +224,10 @@ func (f *Input) CodecTags() *CodecTagList {
 		return nil
 	}
 	return NewCodecTagListFromC(unsafe.Pointer(f.CAVInputFormat.codec_tag))
+}
+
+func (f *Input) Flags() Flags {
+	return Flags(f.CAVInputFormat.flags)
 }
 
 type ProbeData struct {
@@ -781,6 +795,14 @@ func (ctx *Context) GuessFrameRate(stream *Stream, frame *avutil.Frame) *avutil.
 	}
 	r := C.av_guess_frame_rate(ctx.CAVFormatContext, cStream, cFrame)
 	return avutil.NewRationalFromC(unsafe.Pointer(&r))
+}
+
+func (ctx *Context) SeekToTimestamp(streamIndex int, min, target, max int64, flags SeekFlags) error {
+	code := C.avformat_seek_file(ctx.CAVFormatContext, C.int(streamIndex), C.int64_t(min), C.int64_t(target), C.int64_t(max), C.int(flags))
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
 }
 
 type IOContext struct {
