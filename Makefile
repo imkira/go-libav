@@ -1,4 +1,5 @@
-PACKAGES=$(shell find * -path Godeps -prune -o -name *.go -print0 | xargs -0 -n1 dirname | sort --unique)
+PACKAGES=$(shell find * -name *.go -print0 | xargs -0 -n1 dirname | sort --unique)
+TEST_PACKAGES=$(shell find * -name *_test.go -print0 | xargs -0 -n1 dirname | sort --unique)
 
 .PHONY: all gofmt golint govet test clean
 
@@ -20,9 +21,10 @@ govet:
 	@for dir in $(PACKAGES); do go tool vet -all $${dir}; done
 
 test: fixtures
-	rm -f coverage.txt
-	@for dir in $(PACKAGES); do (cd $${dir} && go test -v -race -cpu=1,2,4 -coverprofile=coverage.txt -covermode=atomic); done
-	@for dir in $(PACKAGES); do (if [ -f coverage.txt ]; then cat $${dir}/coverage.txt | tail -n +2 >> coverage.txt; else cp $${dir}/coverage.txt .; fi); done
+	rm -f coverage.*
+	@for dir in $(TEST_PACKAGES); do (cd $${dir} && go test -v -race -cpu=1,2,4 -coverprofile=coverage.txt -covermode=atomic || touch $(PWD)/coverage.failed); done
+	@for dir in $(TEST_PACKAGES); do (if [ -f coverage.txt ]; then cat $${dir}/coverage.txt | tail -n +2 >> coverage.txt; else cp $${dir}/coverage.txt .; fi); done
+	@test ! -f coverage.failed || (echo Tests failed; exit 1)
 
 cover:
 	go tool cover -html=coverage.txt -o coverage.html
