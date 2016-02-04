@@ -40,7 +40,7 @@ package avutil
 //  return 0;
 //}
 //
-//static const int go_av_errno_to_error(errno_t e)
+//static const int go_av_errno_to_error(int e)
 //{
 //  return AVERROR(e);
 //}
@@ -423,7 +423,7 @@ func (t *Time) Duration() (time.Duration, bool) {
 }
 
 func ErrnoErrorCode(e syscall.Errno) ErrorCode {
-	return ErrorCode(C.go_av_errno_to_error(C.errno_t(e)))
+	return ErrorCode(C.go_av_errno_to_error(C.int(e)))
 }
 
 type Error struct {
