@@ -2,6 +2,7 @@ package avutil
 
 import (
 	"reflect"
+	"syscall"
 	"testing"
 )
 
@@ -12,16 +13,27 @@ func TestNewErrorFromCode(t *testing.T) {
 	}
 }
 
-func TestErrorError(t *testing.T) {
+func TestErrorFromCodeError(t *testing.T) {
 	err := NewErrorFromCode(-1)
 	if err.Error() != "Operation not permitted" {
 		t.Fatal(err)
 	}
 }
 
-func TestErrorCode(t *testing.T) {
+func TestErrorFromCodeCode(t *testing.T) {
 	err := NewErrorFromCode(-2)
 	if err.Code() != -2 {
+		t.Fatal(err)
+	}
+}
+
+func TestErrorFromErrnoError(t *testing.T) {
+	err := NewErrorFromCode(ErrnoErrorCode(syscall.EPERM))
+	if err.Error() != "Operation not permitted" {
+		t.Fatal(err)
+	}
+	err = NewErrorFromCode(ErrnoErrorCode(syscall.ENOSYS))
+	if err.Error() != "Function not implemented" {
 		t.Fatal(err)
 	}
 }

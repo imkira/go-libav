@@ -40,11 +40,17 @@ package avutil
 //  return 0;
 //}
 //
+//static const int go_av_errno_to_error(errno_t e)
+//{
+//  return AVERROR(e);
+//}
+//
 // #cgo pkg-config: libavutil
 import "C"
 
 import (
 	"errors"
+	"syscall"
 	"time"
 	"unsafe"
 )
@@ -414,6 +420,10 @@ func (t *Time) Duration() (time.Duration, bool) {
 	x := t.Point * int64(t.Base.Numerator())
 	d := time.Duration(x) * time.Second / time.Duration(t.Base.Denominator())
 	return d, true
+}
+
+func ErrnoErrorCode(e syscall.Errno) ErrorCode {
+	return ErrorCode(C.go_av_errno_to_error(C.errno_t(e)))
 }
 
 type Error struct {
