@@ -832,11 +832,16 @@ func NewIOContextFromC(cCtx unsafe.Pointer) *IOContext {
 	return &IOContext{CAVIOContext: (*C.AVIOContext)(cCtx)}
 }
 
-func (ctx *IOContext) Close() {
+func (ctx *IOContext) Close() error {
 	if ctx.CAVIOContext != nil {
-		defer C.avio_close(ctx.CAVIOContext)
+		cCtx := ctx.CAVIOContext
 		ctx.CAVIOContext = nil
+		code := C.avio_close(cCtx)
+		if code < 0 {
+			return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+		}
 	}
+	return nil
 }
 
 type IOInterruptCallback struct {
