@@ -713,6 +713,18 @@ func (f *Frame) Unref() {
 	C.av_frame_unref(f.CAVFrame)
 }
 
+func (f *Frame) GetBuffer() error {
+	return f.GetBufferWithAlignment(32)
+}
+
+func (f *Frame) GetBufferWithAlignment(alignment int) error {
+	code := C.av_frame_get_buffer(f.CAVFrame, C.int(alignment))
+	if code < 0 {
+		return NewErrorFromCode(ErrorCode(code))
+	}
+	return nil
+}
+
 func (f *Frame) Data(index int) unsafe.Pointer {
 	return unsafe.Pointer(f.CAVFrame.data[index])
 }

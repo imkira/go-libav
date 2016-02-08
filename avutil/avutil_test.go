@@ -404,3 +404,44 @@ func TestParseTime(t *testing.T) {
 		}
 	}
 }
+
+func TestFindPixelFormatByName(t *testing.T) {
+	fmt, ok := FindPixelFormatByName("yuv420p")
+	if !ok || fmt == PixelFormatNone {
+		t.Errorf("Expecting pixel format")
+	}
+	fmt, ok = FindPixelFormatByName("invalid")
+	if ok || fmt != PixelFormatNone {
+		t.Errorf("Not expecting pixel format")
+	}
+}
+
+func TestNewFrame(t *testing.T) {
+	frame, err := NewFrame()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if frame == nil {
+		t.Fatalf("Expecting frame")
+	}
+	defer frame.Free()
+}
+
+func TestFrameGetBuffer(t *testing.T) {
+	frame, _ := NewFrame()
+	defer frame.Free()
+	if frame.Data(0) != nil {
+		t.Fatalf("Expecting no data")
+	}
+	frame.SetWidth(32)
+	frame.SetHeight(32)
+	fmt, _ := FindPixelFormatByName("yuv420p")
+	frame.SetPixelFormat(fmt)
+	err := frame.GetBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if frame.Data(0) == nil {
+		t.Fatalf("Expecting data")
+	}
+}
