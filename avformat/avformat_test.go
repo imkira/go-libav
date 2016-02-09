@@ -341,3 +341,14 @@ func TestGuessFrameRate(t *testing.T) {
 		}
 	}
 }
+
+func TestContextDuration(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+
+	ctx.SetDuration(1000000)
+	result := ctx.Duration()
+	if result != 1000000 {
+		t.Fatalf("[TestContextDuration] result = %d, NG, expected = %d", result, 1000000)
+	}
+}
