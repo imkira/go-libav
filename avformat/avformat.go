@@ -687,6 +687,10 @@ func (ctx *Context) Duration() int64 {
 	return int64(ctx.CAVFormatContext.duration)
 }
 
+func (ctx *Context) SetDuration(duration int64) {
+	ctx.CAVFormatContext.duration = (C.int64_t)(duration)
+}
+
 func (ctx *Context) BitRate() int {
 	return int(ctx.CAVFormatContext.bit_rate)
 }

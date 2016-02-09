@@ -567,6 +567,14 @@ func (g *Graph) Config() error {
 	return nil
 }
 
+func (g *Graph) RequestOldest() error {
+	code := C.avfilter_graph_request_oldest(g.CAVFilterGraph)
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
+}
+
 func (g *Graph) Dump() (string, error) {
 	cStr := C.avfilter_graph_dump(g.CAVFilterGraph, nil)
 	if cStr == nil {
