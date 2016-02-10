@@ -352,3 +352,14 @@ func TestContextDuration(t *testing.T) {
 		t.Fatalf("[TestContextDuration] result = %d, NG, expected = %d", result, 1000000)
 	}
 }
+
+func TestContextMaxDelay(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+
+	ctx.SetMaxDelay(500000)
+	result := ctx.MaxDelay()
+	if result != 500000 {
+		t.Fatalf("[TestContextMaxDelay] result = %d, NG, expected = %d", result, 500000)
+	}
+}
