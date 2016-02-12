@@ -699,6 +699,10 @@ func (ctx *Context) MaxDelay() int {
 	return int(ctx.CAVFormatContext.max_delay)
 }
 
+func (ctx *Context) SetMaxDelay(maxDelay int) {
+	ctx.CAVFormatContext.max_delay = (C.int)(maxDelay)
+}
+
 func (ctx *Context) Flags() ContextFlags {
 	return ContextFlags(ctx.CAVFormatContext.flags)
 }
