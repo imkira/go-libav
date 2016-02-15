@@ -511,6 +511,14 @@ func (s *Stream) SetRealFrameRate(frameRate *avutil.Rational) {
 	s.CAVStream.r_frame_rate.den = (C.int)(frameRate.Denominator())
 }
 
+func (s *Stream) SetFirstDTS(firstDTS int64) {
+	s.CAVStream.first_dts = (C.int64_t)(firstDTS)
+}
+
+func (s *Stream) FirstDTS() int64 {
+	return int64(s.CAVStream.first_dts)
+}
+
 type Context struct {
 	CAVFormatContext *C.AVFormatContext
 }

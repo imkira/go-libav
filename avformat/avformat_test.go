@@ -318,6 +318,21 @@ func TestRealFrameRate(t *testing.T) {
 	}
 }
 
+func TestStreamFirstDTSOK(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+	stream, err := ctx.NewStream()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := int64(1500000)
+	stream.SetFirstDTS(expected)
+	result := stream.FirstDTS()
+	if result != expected {
+		t.Fatalf("[TestStreamFirstDTSOK] result = %d, NG, expected = %d", result, expected)
+	}
+}
+
 func TestGuessFrameRate(t *testing.T) {
 	ctx, _ := NewContextForInput()
 	defer ctx.Free()

@@ -427,6 +427,15 @@ func TestNewFrame(t *testing.T) {
 	defer frame.Free()
 }
 
+func TestFramePacketDurationOK(t *testing.T) {
+	frame, _ := NewFrame()
+	defer frame.Free()
+	result := frame.PacketDuration()
+	if result != 0 {
+		t.Fatalf("[TestFramePacketDurationOK] result=%d, NG expected=%d", result, 0)
+	}
+}
+
 func TestFrameGetBuffer(t *testing.T) {
 	frame, _ := NewFrame()
 	defer frame.Free()
@@ -443,5 +452,26 @@ func TestFrameGetBuffer(t *testing.T) {
 	}
 	if frame.Data(0) == nil {
 		t.Fatalf("Expecting data")
+	}
+}
+
+func TestClipOK(t *testing.T) {
+	min := 1
+	max := 4
+	for x := min - 1; x <= max+1; x++ {
+		result := Clip(x, min, max)
+		if x < min {
+			if result != min {
+				t.Fatalf("[TestClipOK] result=%d, NG expected=%d", result, min)
+			}
+		} else if x > max {
+			if result != max {
+				t.Fatalf("[TestClipOK] result=%d, NG expected=%d", result, max)
+			}
+		} else {
+			if result != x {
+				t.Fatalf("[TestClipOK] result=%d, NG expected=%d", result, x)
+			}
+		}
 	}
 }
