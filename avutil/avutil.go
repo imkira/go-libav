@@ -7,6 +7,7 @@ package avutil
 //#include <libavutil/opt.h>
 //#include <libavutil/frame.h>
 //#include <libavutil/parseutils.h>
+//#include <libavutil/common.h>
 //
 //#ifdef AV_LOG_TRACE
 //#define GO_AV_LOG_TRACE AV_LOG_TRACE
@@ -870,6 +871,10 @@ func (f *Frame) BestEffortTimestamp() int64 {
 	return int64(C.av_frame_get_best_effort_timestamp(f.CAVFrame))
 }
 
+func (f *Frame) PacketDuration() int64 {
+	return int64(C.av_frame_get_pkt_duration(f.CAVFrame))
+}
+
 type OptionAccessor struct {
 	obj  unsafe.Pointer
 	fake bool
@@ -1247,6 +1252,10 @@ func ParseTime(timestr string, duration bool) (int64, error) {
 		return 0, NewErrorFromCode(ErrorCode(code))
 	}
 	return int64(x), nil
+}
+
+func Clip(x, min, max int) int {
+	return int(C.av_clip(C.int(x), C.int(min), C.int(max)))
 }
 
 func boolToCInt(b bool) C.int {
