@@ -455,6 +455,93 @@ func TestFrameGetBuffer(t *testing.T) {
 	}
 }
 
+func TestExprOK(t *testing.T) {
+	expr := testExpr(t)
+	defer expr.Free()
+}
+
+func TestExprInvalidParams(t *testing.T) {
+	type exprTestData struct {
+		value      string
+		constNames []string
+	}
+	datas := []*exprTestData{
+		&exprTestData{
+			value:      "invalid",
+			constNames: []string{"n", "n_forced", "prev_forced_n", "prev_forced_t", "t", ""},
+		},
+		&exprTestData{
+			value:      "gte(t,n_forced*5)",
+			constNames: []string{"invalid"},
+		},
+		&exprTestData{
+			value:      "gte(t,n_forced*5)",
+			constNames: []string{},
+		},
+	}
+	for _, data := range datas {
+		expr, err := NewExpr(data.value, data.constNames)
+		if err == nil {
+			t.Fatal("[TestExprInvalidParams] expected error.")
+		}
+		if expr != nil {
+			t.Fatal("[TestExprInvalidParams] expected nil, got expr.")
+			expr.Free()
+		}
+	}
+}
+
+func TestExprEvaluateOK(t *testing.T) {
+	expr := testExpr(t)
+	defer expr.Free()
+	constValues := []float64{0, 0, 0, 0, 0, 0}
+	for i := 0; i <= 5; i++ {
+		result, err := expr.Evaluate(constValues)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 || i == 5 {
+			if result != 1 {
+				t.Fatalf("[TestExprOK] result got: %f, expected: 1", result)
+			}
+		} else {
+			if result != 0 {
+				t.Fatalf("[TestExprOK] result got: %f, expected: 0", result)
+			}
+		}
+		constValues[4] = float64(i) + 1
+		if result > 0 {
+			constValues[1] += 1
+		}
+	}
+}
+
+func TestExprEvaluateInvalidParams(t *testing.T) {
+	expr := testExpr(t)
+	defer expr.Free()
+	constValues := []float64{}
+	result, err := expr.Evaluate(constValues)
+	if err == nil {
+		t.Fatal("[TestExprEvaluateInvalidParams] expected error.")
+	}
+	if result == 1 {
+		t.Fatalf("[TestExprEvaluateInvalidParams] result got: %f, expected: 0", result)
+	}
+}
+
+func testExpr(t *testing.T) *Expr {
+	exprValue := "gte(t,n_forced*5)"
+	constNames := []string{"n", "n_forced", "prev_forced_n", "prev_forced_t", "t", ""}
+	expr, err := NewExpr(exprValue, constNames)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expr == nil {
+		t.Fatal("[testExpr] expected expr, got null")
+	}
+	return expr
+}
+
 func TestClipOK(t *testing.T) {
 	min := 1
 	max := 4

@@ -8,6 +8,7 @@ package avutil
 //#include <libavutil/frame.h>
 //#include <libavutil/parseutils.h>
 //#include <libavutil/common.h>
+//#include <libavutil/eval.h>
 //
 //#ifdef AV_LOG_TRACE
 //#define GO_AV_LOG_TRACE AV_LOG_TRACE
@@ -57,7 +58,8 @@ import (
 )
 
 var (
-	ErrAllocationError = errors.New("allocation error")
+	ErrAllocationError     = errors.New("allocation error")
+	ErrInvalidArgumentSize = errors.New("invalid argument size")
 )
 
 type LogLevel int
@@ -1233,6 +1235,46 @@ func getOptionError(code C.int) error {
 		return nil
 	}
 	return NewErrorFromCode(ErrorCode(code))
+}
+
+type Expr struct {
+	CAVExpr *C.struct_AVExpr
+}
+
+func NewExpr(value string, constNames []string) (*Expr, error) {
+	if len(constNames) == 0 {
+		return nil, ErrInvalidArgumentSize
+	}
+	e := NewExprFromC(nil)
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cValue))
+	cConstNames := make([]*C.char, C.int(len(constNames)))
+	for i, constName := range constNames {
+		cConstNames[i] = C.CString(constName)
+		defer C.free(unsafe.Pointer(cConstNames[i]))
+	}
+	code := C.av_expr_parse(&e.CAVExpr, cValue, (**C.char)(&cConstNames[0]), nil, nil, nil, nil, 0, nil)
+	if code < 0 {
+		return nil, NewErrorFromCode(ErrorCode(code))
+	}
+	return e, nil
+}
+
+func NewExprFromC(cExpr unsafe.Pointer) *Expr {
+	return &Expr{CAVExpr: (*C.struct_AVExpr)(cExpr)}
+}
+
+func (e *Expr) Evaluate(constValues []float64) (float64, error) {
+	if len(constValues) == 0 {
+		return 0, ErrInvalidArgumentSize
+	}
+	var cRet C.double
+	cRet = C.av_expr_eval(e.CAVExpr, (*C.double)(&constValues[0]), nil)
+	return float64(cRet), nil
+}
+
+func (e *Expr) Free() {
+	defer C.av_expr_free(e.CAVExpr)
 }
 
 func Rescale(a, b, c int64) int64 {
