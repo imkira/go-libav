@@ -1241,13 +1241,10 @@ type Expr struct {
 }
 
 func NewExpr(value string, constNames []string) (*Expr, error) {
-	if len(constNames) == 0 {
-		return nil, ErrInvalidArgumentSize
-	}
 	e := NewExprFromC(nil)
 	cValue := C.CString(value)
 	defer C.free(unsafe.Pointer(cValue))
-	cConstNames := make([]*C.char, C.int(len(constNames)))
+	cConstNames := make([]*C.char, C.int(len(constNames)+1))
 	for i, constName := range constNames {
 		cConstNames[i] = C.CString(constName)
 		defer C.free(unsafe.Pointer(cConstNames[i]))

@@ -460,6 +460,19 @@ func TestExprOK(t *testing.T) {
 	defer expr.Free()
 }
 
+func TestExprOK100K(t *testing.T) {
+	var exprs []*Expr
+	defer func() {
+		for _, expr := range exprs {
+			defer expr.Free()
+		}
+	}()
+	for i := 0; i < 100000; i++ {
+		expr := testExpr(t)
+		exprs = append(exprs, expr)
+	}
+}
+
 func TestExprInvalidParams(t *testing.T) {
 	type exprTestData struct {
 		value      string
@@ -478,11 +491,15 @@ func TestExprInvalidParams(t *testing.T) {
 			value:      "gte(t,n_forced*5)",
 			constNames: []string{},
 		},
+		&exprTestData{
+			value:      "gte(t,n_forced*5)",
+			constNames: nil,
+		},
 	}
 	for _, data := range datas {
 		expr, err := NewExpr(data.value, data.constNames)
-		if err == nil {
-			t.Fatal("[TestExprInvalidParams] expected error.")
+		if err == nil || err.Error() != "Invalid argument" {
+			t.Fatalf("[TestExprInvalidParams] expected error but got %v", err)
 		}
 		if expr != nil {
 			t.Fatal("[TestExprInvalidParams] expected nil, got expr.")
