@@ -6,6 +6,30 @@ import (
 	"github.com/imkira/go-libav/avutil"
 )
 
+func TestNewPacket(t *testing.T) {
+	pkt, err := NewPacket()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pkt.Free()
+	if pkt == nil {
+		t.Fatalf("Expecting packet")
+	}
+}
+
+func TestPacketFree(t *testing.T) {
+	pkt, _ := NewPacket()
+	if pkt.CAVPacket == nil {
+		t.Fatalf("Expecting packet")
+	}
+	for i := 0; i < 3; i++ {
+		pkt.Free()
+		if pkt.CAVPacket != nil {
+			t.Fatalf("Not expecting packet")
+		}
+	}
+}
+
 func TestNewContextFromC(t *testing.T) {
 	ctx := NewContextFromC(nil)
 	if ctx == nil {

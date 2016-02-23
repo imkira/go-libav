@@ -628,7 +628,7 @@ func (ctx *Context) WriteTrailer() error {
 }
 
 func (ctx *Context) ReadFrame(pkt *avcodec.Packet) (bool, error) {
-	cPkt := (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
+	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	code := C.av_read_frame(ctx.CAVFormatContext, cPkt)
 	if code < 0 {
 		if avutil.ErrorCode(code) == avutil.ErrorCodeEOF {
@@ -642,7 +642,7 @@ func (ctx *Context) ReadFrame(pkt *avcodec.Packet) (bool, error) {
 func (ctx *Context) WriteFrame(pkt *avcodec.Packet) error {
 	var cPkt *C.AVPacket
 	if cPkt != nil {
-		cPkt = (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
+		cPkt = (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	}
 	code := C.av_write_frame(ctx.CAVFormatContext, cPkt)
 	if code < 0 {
@@ -654,7 +654,7 @@ func (ctx *Context) WriteFrame(pkt *avcodec.Packet) error {
 func (ctx *Context) InterleavedWriteFrame(pkt *avcodec.Packet) error {
 	var cPkt *C.AVPacket
 	if pkt != nil {
-		cPkt = (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
+		cPkt = (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	}
 	code := C.av_interleaved_write_frame(ctx.CAVFormatContext, cPkt)
 	if code < 0 {

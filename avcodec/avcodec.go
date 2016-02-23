@@ -323,32 +323,46 @@ func (psd *PacketSideData) SetType(t PacketSideDataType) {
 }
 
 type Packet struct {
-	CAVPacket C.AVPacket
+	CAVPacket *C.AVPacket
 }
 
-func NewPacket() *Packet {
-	pkt := &Packet{}
-	pkt.CAVPacket.data = nil
-	pkt.CAVPacket.size = 0
-	C.av_init_packet(&pkt.CAVPacket)
-	return pkt
+func NewPacket() (*Packet, error) {
+	size := C.size_t(C.sizeof_AVPacket)
+	cPkt := (*C.AVPacket)(C.av_mallocz(size))
+	if cPkt == nil {
+		return nil, ErrAllocationError
+	}
+	C.av_packet_unref(cPkt)
+	return NewPacketFromC(unsafe.Pointer(cPkt)), nil
+}
+
+func NewPacketFromC(cPkt unsafe.Pointer) *Packet {
+	return &Packet{CAVPacket: (*C.AVPacket)(cPkt)}
 }
 
 func (pkt *Packet) Free() {
-	C.av_free_packet(&pkt.CAVPacket)
+	if pkt.CAVPacket != nil {
+		defer C.av_free(unsafe.Pointer(pkt.CAVPacket))
+		defer C.av_free_packet(pkt.CAVPacket)
+		pkt.CAVPacket = nil
+	}
 }
 
 func (pkt *Packet) Ref() (*Packet, error) {
-	dst := &Packet{}
-	code := C.av_packet_ref(&dst.CAVPacket, &pkt.CAVPacket)
+	dst, err := NewPacket()
+	if err != nil {
+		return nil, err
+	}
+	code := C.av_packet_ref(dst.CAVPacket, pkt.CAVPacket)
 	if code < 0 {
+		defer dst.Free()
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
 	return dst, nil
 }
 
 func (pkt *Packet) Unref() {
-	C.av_packet_unref(&pkt.CAVPacket)
+	C.av_packet_unref(pkt.CAVPacket)
 }
 
 func (pkt *Packet) ConsumeData(size int) {
@@ -362,7 +376,7 @@ func (pkt *Packet) ConsumeData(size int) {
 func (pkt *Packet) RescaleTime(srcTimeBase, dstTimeBase *avutil.Rational) {
 	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
 	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
-	C.av_packet_rescale_ts(&pkt.CAVPacket, *src, *dst)
+	C.av_packet_rescale_ts(pkt.CAVPacket, *src, *dst)
 }
 
 func (pkt *Packet) PTS() int64 {
@@ -678,8 +692,8 @@ func (ctx *Context) CopyTo(dst *Context) error {
 func (ctx *Context) DecodeVideo(pkt *Packet, frame *avutil.Frame) (bool, int, error) {
 	var cGotFrame C.int
 	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
-	cPacket := (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
-	count := C.avcodec_decode_video2(ctx.CAVCodecContext, cFrame, &cGotFrame, cPacket)
+	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
+	count := C.avcodec_decode_video2(ctx.CAVCodecContext, cFrame, &cGotFrame, cPkt)
 	var err error
 	if count < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(count))
@@ -691,8 +705,8 @@ func (ctx *Context) DecodeVideo(pkt *Packet, frame *avutil.Frame) (bool, int, er
 func (ctx *Context) DecodeAudio(pkt *Packet, frame *avutil.Frame) (bool, int, error) {
 	var cGotFrame C.int
 	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
-	cPacket := (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
-	count := C.avcodec_decode_audio4(ctx.CAVCodecContext, cFrame, &cGotFrame, cPacket)
+	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
+	count := C.avcodec_decode_audio4(ctx.CAVCodecContext, cFrame, &cGotFrame, cPkt)
 	var err error
 	if count < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(count))
@@ -707,8 +721,8 @@ func (ctx *Context) EncodeVideo(pkt *Packet, frame *avutil.Frame) (bool, error) 
 	if frame != nil {
 		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	}
-	cPacket := (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
-	code := C.avcodec_encode_video2(ctx.CAVCodecContext, cPacket, cFrame, &cGotFrame)
+	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
+	code := C.avcodec_encode_video2(ctx.CAVCodecContext, cPkt, cFrame, &cGotFrame)
 	var err error
 	if code < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
@@ -722,8 +736,8 @@ func (ctx *Context) EncodeAudio(pkt *Packet, frame *avutil.Frame) (bool, error) 
 	if frame != nil {
 		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	}
-	cPacket := (*C.AVPacket)(unsafe.Pointer(&pkt.CAVPacket))
-	code := C.avcodec_encode_audio2(ctx.CAVCodecContext, cPacket, cFrame, &cGotFrame)
+	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
+	code := C.avcodec_encode_audio2(ctx.CAVCodecContext, cPkt, cFrame, &cGotFrame)
 	var err error
 	if code < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
