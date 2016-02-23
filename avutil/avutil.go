@@ -451,9 +451,8 @@ func (e *Error) Error() string {
 
 func strError(code C.int) string {
 	size := C.size_t(256)
-	buf := (*C.char)(C.malloc(size))
-	defer C.free(unsafe.Pointer(buf))
-	C.memset(unsafe.Pointer(buf), 0, size)
+	buf := (*C.char)(C.av_mallocz(size))
+	defer C.av_free(unsafe.Pointer(buf))
 	if C.av_strerror(code, buf, size-1) == 0 {
 		return C.GoString(buf)
 	}
