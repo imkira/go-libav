@@ -49,7 +49,7 @@ func TestNewDictionary(t *testing.T) {
 	}
 }
 
-func TestDictionarySetCount(t *testing.T) {
+func TestDictionarySetDeleteCount(t *testing.T) {
 	dict := NewDictionary()
 	defer dict.Free()
 	if err := dict.Set("foo", "bar"); err != nil {
@@ -64,9 +64,15 @@ func TestDictionarySetCount(t *testing.T) {
 	if count := dict.Count(); count != 2 {
 		t.Fatalf("Expecting count but got %d", count)
 	}
+	if err := dict.Delete("foo"); err != nil {
+		t.Fatal(err)
+	}
+	if count := dict.Count(); count != 1 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
 }
 
-func TestDictionarySetGetHas(t *testing.T) {
+func TestDictionarySetGetDeleteHas(t *testing.T) {
 	dict := NewDictionary()
 	defer dict.Free()
 	if value, ok := dict.GetOk("foo"); ok || value != "" {
@@ -94,6 +100,13 @@ func TestDictionarySetGetHas(t *testing.T) {
 	}
 	if !dict.Has("") {
 		t.Fatal("Epecting key")
+	}
+	dict.Delete("foo")
+	if value, ok := dict.GetOk("foo"); ok || value != "" {
+		t.Fatal("Not expecting value")
+	}
+	if dict.Has("foo") {
+		t.Fatal("Not expecting key")
 	}
 }
 
