@@ -539,6 +539,16 @@ func (dict *Dictionary) Set(key, value string) error {
 	return dict.set(key, value, C.AV_DICT_MATCH_CASE)
 }
 
+func (dict *Dictionary) Delete(key string) error {
+	cKey := C.CString(key)
+	defer C.free(unsafe.Pointer(cKey))
+	code := ErrorCode(C.av_dict_set(&dict.CAVDictionary, cKey, nil, 0))
+	if code < 0 {
+		return NewErrorFromCode(code)
+	}
+	return nil
+}
+
 func (dict *Dictionary) SetInsensitive(key, value string) error {
 	return dict.set(key, value, 0)
 }
