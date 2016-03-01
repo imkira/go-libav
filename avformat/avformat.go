@@ -478,16 +478,13 @@ func (s *Stream) SetDisposition(disposition Disposition) {
 }
 
 func (s *Stream) MetaData() *avutil.Dictionary {
-	if s.CAVStream.metadata == nil {
-		return nil
-	}
-	return avutil.NewDictionaryFromC(unsafe.Pointer(s.CAVStream.metadata))
+	return avutil.NewDictionaryFromC(unsafe.Pointer(&s.CAVStream.metadata))
 }
 
 func (s *Stream) SetMetaData(metaData *avutil.Dictionary) {
 	var cMetaData *C.AVDictionary
 	if metaData != nil {
-		cMetaData = (*C.AVDictionary)(unsafe.Pointer(metaData.CAVDictionary))
+		cMetaData = (*C.AVDictionary)(metaData.Value())
 	}
 	s.CAVStream.metadata = cMetaData
 }
@@ -610,7 +607,7 @@ func (ctx *Context) NumberOfStreams() uint {
 func (ctx *Context) WriteHeader(options *avutil.Dictionary) error {
 	var cOptions **C.AVDictionary
 	if options != nil {
-		cOptions = (**C.AVDictionary)(unsafe.Pointer(&options.CAVDictionary))
+		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
 	code := C.avformat_write_header(ctx.CAVFormatContext, cOptions)
 	if code < 0 {
@@ -736,16 +733,13 @@ func (ctx *Context) SubtitleCodecID() avcodec.CodecID {
 }
 
 func (ctx *Context) MetaData() *avutil.Dictionary {
-	if ctx.CAVFormatContext.metadata == nil {
-		return nil
-	}
-	return avutil.NewDictionaryFromC(unsafe.Pointer(ctx.CAVFormatContext.metadata))
+	return avutil.NewDictionaryFromC(unsafe.Pointer(&ctx.CAVFormatContext.metadata))
 }
 
 func (ctx *Context) SetMetaData(metaData *avutil.Dictionary) {
 	var cMetaData *C.AVDictionary
 	if metaData != nil {
-		cMetaData = (*C.AVDictionary)(unsafe.Pointer(metaData.CAVDictionary))
+		cMetaData = (*C.AVDictionary)(metaData.Value())
 	}
 	ctx.CAVFormatContext.metadata = cMetaData
 }
@@ -763,7 +757,7 @@ func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dic
 	}
 	var cOptions **C.AVDictionary
 	if options != nil {
-		cOptions = (**C.AVDictionary)(unsafe.Pointer(&options.CAVDictionary))
+		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
 	code := C.avformat_open_input(&ctx.CAVFormatContext, cFileName, cInput, cOptions)
 	if code < 0 {
@@ -834,7 +828,7 @@ func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *
 	}
 	var cOptions **C.AVDictionary
 	if options != nil {
-		cOptions = (**C.AVDictionary)(unsafe.Pointer(&options.CAVDictionary))
+		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
 	var cCtx *C.AVIOContext
 	code := C.avio_open2(&cCtx, cURL, (C.int)(flags), cCb, cOptions)
@@ -896,7 +890,7 @@ func newCAVDictionaryArrayFromDictionarySlice(dicts []*avutil.Dictionary) **C.AV
 		if dicts[i] == nil {
 			dicts[i] = avutil.NewDictionary()
 		}
-		C.go_av_dicts_set(arr, C.int(i), (*C.AVDictionary)(dicts[i].CAVDictionary))
+		C.go_av_dicts_set(arr, C.int(i), (*C.AVDictionary)(dicts[i].Value()))
 	}
 	return nil
 }
