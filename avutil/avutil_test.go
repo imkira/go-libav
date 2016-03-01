@@ -295,13 +295,22 @@ func TestDictionaryFreeCountFreeCount(t *testing.T) {
 func TestDictionaryFreeSetGetFreeGet(t *testing.T) {
 	dict := NewDictionary()
 	dict.Free()
+	if dict.CAVDictionary != nil || dict.pCAVDictionary != nil {
+		t.Fatal("Invalid pointer")
+	}
 	if err := dict.Set("foo", "bar"); err != nil {
 		t.Fatal(err)
+	}
+	if dict.CAVDictionary != nil || dict.pCAVDictionary == nil {
+		t.Fatal("Invalid pointer")
 	}
 	if value, ok := dict.GetOk("foo"); !ok || value != "bar" {
 		t.Fatal("Expecting value")
 	}
 	dict.Free()
+	if dict.CAVDictionary != nil || dict.pCAVDictionary != nil {
+		t.Fatal("Invalid pointer")
+	}
 	if value, ok := dict.GetOk("foo"); ok || value != "" {
 		t.Fatal("Not expecting value")
 	}

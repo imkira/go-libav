@@ -378,3 +378,64 @@ func TestContextMaxDelay(t *testing.T) {
 		t.Fatalf("[TestContextMaxDelay] result = %d, NG, expected = %d", result, 500000)
 	}
 }
+
+func TestContextMetaData(t *testing.T) {
+	fmtCtx, err := NewContextForInput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fmtCtx.Free()
+	metadata := fmtCtx.MetaData()
+	if count := metadata.Count(); count != 0 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	if err := metadata.Set("foo", "foo"); err != nil {
+		t.Fatal(err)
+	}
+	if count := metadata.Count(); count != 1 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	if count := fmtCtx.MetaData().Count(); count != 1 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	if err := metadata.Delete("foo"); err != nil {
+		t.Fatal(err)
+	}
+	if count := metadata.Count(); count != 0 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	if err := metadata.Set("bar", "bar"); err != nil {
+		t.Fatal(err)
+	}
+	if count := metadata.Count(); count != 1 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	if count := fmtCtx.MetaData().Count(); count != 1 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	if err := metadata.Delete("bar"); err != nil {
+		t.Fatal(err)
+	}
+	if count := metadata.Count(); count != 0 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+}
+
+func TestContextSetMetaData(t *testing.T) {
+	fmtCtx, err := NewContextForInput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fmtCtx.Free()
+	if count := fmtCtx.MetaData().Count(); count != 0 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+	metadata := avutil.NewDictionary()
+	if err := metadata.Set("foo", "foo"); err != nil {
+		t.Fatal(err)
+	}
+	fmtCtx.SetMetaData(metadata)
+	if count := fmtCtx.MetaData().Count(); count != 1 {
+		t.Fatalf("Expecting count but got %d", count)
+	}
+}

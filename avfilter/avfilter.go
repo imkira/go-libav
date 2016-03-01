@@ -333,7 +333,7 @@ func (ctx *Context) InitWithString(args string) error {
 func (ctx *Context) InitWithDictionary(options *avutil.Dictionary) error {
 	var cOptions **C.AVDictionary
 	if options != nil {
-		cOptions = (**C.AVDictionary)(unsafe.Pointer(&options.CAVDictionary))
+		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
 	code := C.avfilter_init_dict(ctx.CAVFilterContext, cOptions)
 	if code < 0 {

@@ -462,7 +462,8 @@ func strError(code C.int) string {
 var _ error = (*Error)(nil)
 
 type Dictionary struct {
-	CAVDictionary *C.AVDictionary
+	CAVDictionary  **C.AVDictionary
+	pCAVDictionary *C.AVDictionary
 }
 
 func NewDictionary() *Dictionary {
@@ -470,17 +471,39 @@ func NewDictionary() *Dictionary {
 }
 
 func NewDictionaryFromC(cDictionary unsafe.Pointer) *Dictionary {
-	return &Dictionary{CAVDictionary: (*C.AVDictionary)(cDictionary)}
+	return &Dictionary{CAVDictionary: (**C.AVDictionary)(cDictionary)}
 }
 
 func (dict *Dictionary) Free() {
-	defer C.av_dict_free(&dict.CAVDictionary)
+	defer C.av_dict_free(dict.pointer())
+}
+
+func (dict *Dictionary) Pointer() unsafe.Pointer {
+	return unsafe.Pointer(dict.pointer())
+}
+
+func (dict *Dictionary) pointer() **C.AVDictionary {
+	if dict.CAVDictionary != nil {
+		return dict.CAVDictionary
+	}
+	return &dict.pCAVDictionary
+}
+
+func (dict *Dictionary) Value() unsafe.Pointer {
+	return unsafe.Pointer(dict.value())
+}
+
+func (dict *Dictionary) value() *C.AVDictionary {
+	if dict.CAVDictionary != nil {
+		return *dict.CAVDictionary
+	}
+	return dict.pCAVDictionary
 }
 
 func (dict *Dictionary) has(key string, flags C.int) bool {
 	cKey := C.CString(key)
 	defer C.free(unsafe.Pointer(cKey))
-	has := C.go_av_dict_has(dict.CAVDictionary, cKey, flags)
+	has := C.go_av_dict_has(dict.value(), cKey, flags)
 	if has == 0 {
 		return false
 	}
@@ -498,7 +521,7 @@ func (dict *Dictionary) HasInsensitive(key string) bool {
 func (dict *Dictionary) get(key string, flags C.int) (string, bool) {
 	cKey := C.CString(key)
 	defer C.free(unsafe.Pointer(cKey))
-	entry := C.av_dict_get(dict.CAVDictionary, cKey, nil, flags)
+	entry := C.av_dict_get(dict.value(), cKey, nil, flags)
 	if entry == nil {
 		return "", false
 	}
@@ -528,7 +551,7 @@ func (dict *Dictionary) set(key, value string, flags C.int) error {
 	defer C.free(unsafe.Pointer(cKey))
 	cValue := C.CString(value)
 	defer C.free(unsafe.Pointer(cValue))
-	code := ErrorCode(C.av_dict_set(&dict.CAVDictionary, cKey, cValue, flags))
+	code := ErrorCode(C.av_dict_set(dict.pointer(), cKey, cValue, flags))
 	if code < 0 {
 		return NewErrorFromCode(code)
 	}
@@ -542,7 +565,7 @@ func (dict *Dictionary) Set(key, value string) error {
 func (dict *Dictionary) Delete(key string) error {
 	cKey := C.CString(key)
 	defer C.free(unsafe.Pointer(cKey))
-	code := ErrorCode(C.av_dict_set(&dict.CAVDictionary, cKey, nil, 0))
+	code := ErrorCode(C.av_dict_set(dict.pointer(), cKey, nil, 0))
 	if code < 0 {
 		return NewErrorFromCode(code)
 	}
@@ -554,7 +577,7 @@ func (dict *Dictionary) SetInsensitive(key, value string) error {
 }
 
 func (dict *Dictionary) Count() int {
-	return int(C.av_dict_count(dict.CAVDictionary))
+	return int(C.av_dict_count(dict.value()))
 }
 
 func (dict *Dictionary) Keys() []string {
@@ -565,7 +588,7 @@ func (dict *Dictionary) Keys() []string {
 	keys := make([]string, 0, count)
 	var entry *C.AVDictionaryEntry
 	for {
-		entry = C.go_av_dict_next(dict.CAVDictionary, entry)
+		entry = C.go_av_dict_next(dict.value(), entry)
 		if entry == nil {
 			break
 		}
@@ -582,7 +605,7 @@ func (dict *Dictionary) Values() []string {
 	values := make([]string, 0, count)
 	var entry *C.AVDictionaryEntry
 	for {
-		entry = C.go_av_dict_next(dict.CAVDictionary, entry)
+		entry = C.go_av_dict_next(dict.value(), entry)
 		if entry == nil {
 			break
 		}
@@ -599,7 +622,7 @@ func (dict *Dictionary) Map() map[string]string {
 	m := make(map[string]string, count)
 	var entry *C.AVDictionaryEntry
 	for {
-		entry = C.go_av_dict_next(dict.CAVDictionary, entry)
+		entry = C.go_av_dict_next(dict.value(), entry)
 		if entry == nil {
 			break
 		}
@@ -610,7 +633,7 @@ func (dict *Dictionary) Map() map[string]string {
 
 func (dict *Dictionary) Copy() *Dictionary {
 	newDict := NewDictionary()
-	C.av_dict_copy(&newDict.CAVDictionary, dict.CAVDictionary, C.AV_DICT_MATCH_CASE)
+	C.av_dict_copy(newDict.pointer(), dict.value(), C.AV_DICT_MATCH_CASE)
 	return newDict
 }
 
@@ -1050,7 +1073,7 @@ func (oa *OptionAccessor) GetDictionaryOptionWithFlags(name string, flags Option
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	searchFlags := oa.searchFlags(flags)
-	code := C.av_opt_get_dict_val(oa.obj, cName, searchFlags, &cOut.CAVDictionary)
+	code := C.av_opt_get_dict_val(oa.obj, cName, searchFlags, cOut.pointer())
 	if code < 0 {
 		return nil, getOptionError(code)
 	}
@@ -1224,7 +1247,7 @@ func (oa *OptionAccessor) SetDictionaryOptionWithFlags(name string, value *Dicti
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	searchFlags := oa.searchFlags(flags)
-	code := C.av_opt_set_dict_val(oa.obj, cName, value.CAVDictionary, searchFlags)
+	code := C.av_opt_set_dict_val(oa.obj, cName, value.value(), searchFlags)
 	if code < 0 {
 		return NewErrorFromCode(ErrorCode(code))
 	}
