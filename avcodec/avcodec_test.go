@@ -102,3 +102,60 @@ func TestCodecDescriptors(t *testing.T) {
 		t.Fatal("not found")
 	}
 }
+
+func TestContextStatInOutOK(t *testing.T) {
+	codec := FindEncoderByName("mpeg4")
+	if codec == nil {
+		t.Error("error")
+	}
+	ctx, err := NewContextWithCodec(codec)
+	if err != nil {
+		t.Error("error")
+	}
+	defer ctx.Free()
+
+	expected := "test"
+	if err := ctx.SetStatsIn(avutil.String(expected)); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+	}
+	result, ok := ctx.StatsIn()
+	if !ok {
+		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=true", ok)
+	}
+	if result != expected {
+		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=%s", result, expected)
+	}
+
+	if err := ctx.SetStatsIn(nil); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+	}
+	result, ok = ctx.StatsIn()
+	if ok {
+		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=false", ok)
+	}
+	if result != "" {
+		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=\"\"(empty)", result)
+	}
+
+	if err := ctx.SetStatsOut(avutil.String(expected)); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+	}
+	result, ok = ctx.StatsOut()
+	if !ok {
+		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=true", ok)
+	}
+	if result != expected {
+		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=%s", result, expected)
+	}
+
+	if err := ctx.SetStatsOut(nil); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+	}
+	result, ok = ctx.StatsOut()
+	if ok {
+		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=false", ok)
+	}
+	if result != "" {
+		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=\"\"(empty)", result)
+	}
+}

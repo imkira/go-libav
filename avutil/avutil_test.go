@@ -601,3 +601,14 @@ func TestClipOK(t *testing.T) {
 		}
 	}
 }
+
+func TestString(t *testing.T) {
+	expected := "test"
+	result := String(expected)
+	if result == nil {
+		t.Fatalf("[TestString] result=nil, NG expected not nil")
+	}
+	if *result != expected {
+		t.Fatalf("[TestString] result=%s, NG expected=%s", *result, expected)
+	}
+}

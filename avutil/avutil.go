@@ -1306,6 +1306,10 @@ func (e *Expr) Free() {
 	defer C.av_expr_free(e.CAVExpr)
 }
 
+func String(str string) *string {
+	return &str
+}
+
 func Rescale(a, b, c int64) int64 {
 	return int64(C.av_rescale(C.int64_t(a), C.int64_t(b), C.int64_t(c)))
 }
