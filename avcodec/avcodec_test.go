@@ -159,3 +159,56 @@ func TestContextStatInOutOK(t *testing.T) {
 		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=\"\"(empty)", result)
 	}
 }
+
+func TestCodecProfileName(t *testing.T) {
+	codec := FindDecoderByName("h264")
+	if codec == nil {
+		t.Fatal("codec not found")
+	}
+	name := codec.ProfileName(100)
+	if name != "High" {
+		t.Errorf("profile name expected:High, got:%s", name)
+	}
+	name = codec.ProfileName(1)
+	if name != "" {
+		t.Errorf("unexpected profile name, got:%s", name)
+	}
+}
+
+func TestCodecProfiles(t *testing.T) {
+	type data struct {
+		id   int
+		name string
+	}
+	datas := []*data{
+		&data{id: 66, name: "Baseline"},
+		&data{id: 578, name: "Constrained Baseline"},
+		&data{id: 77, name: "Main"},
+		&data{id: 88, name: "Extended"},
+		&data{id: 100, name: "High"},
+		&data{id: 110, name: "High 10"},
+		&data{id: 2158, name: "High 10 Intra"},
+		&data{id: 122, name: "High 4:2:2"},
+		&data{id: 2170, name: "High 4:2:2 Intra"},
+		&data{id: 144, name: "High 4:4:4"},
+		&data{id: 244, name: "High 4:4:4 Predictive"},
+		&data{id: 2292, name: "High 4:4:4 Intra"},
+		&data{id: 44, name: "CAVLC 4:4:4"},
+	}
+	codec := FindDecoderByName("h264")
+	if codec == nil {
+		t.Fatal("codec not found")
+	}
+	profiles := codec.Profiles()
+	if len(datas) != len(profiles) {
+		t.Fatalf("profiles count expected:%d, got:%d", len(datas), len(profiles))
+	}
+	for i, profile := range profiles {
+		if datas[i].id != profile.ID() {
+			t.Errorf("profile id expected:%d, got:%d", datas[i].id, profile.ID())
+		}
+		if datas[i].name != profile.Name() {
+			t.Errorf("profile name expected:%s, got:%s", datas[i].name, profile.Name())
+		}
+	}
+}
