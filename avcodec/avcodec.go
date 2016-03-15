@@ -290,6 +290,14 @@ const (
 	CodecPropTextSub   CodecProps = C.AV_CODEC_PROP_TEXT_SUB
 )
 
+func init() {
+	RegisterAll()
+}
+
+func RegisterAll() {
+	C.avcodec_register_all()
+}
+
 type PacketSideData struct {
 	CAVPacketSideData *C.AVPacketSideData
 }
@@ -1840,6 +1848,40 @@ func (ctx *Context) SetSeekPreRoll(seek int) {
 
 func (ctx *Context) CodecWhitelist() []string {
 	return cStringSplit(ctx.CAVCodecContext.codec_whitelist, ",")
+}
+
+func (ctx *Context) StatsIn() (string, bool) {
+	return cStringToStringOk(ctx.CAVCodecContext.stats_in)
+}
+
+func (ctx *Context) SetStatsIn(in *string) error {
+	C.free(unsafe.Pointer(ctx.CAVCodecContext.stats_in))
+	if in == nil {
+		ctx.CAVCodecContext.stats_in = nil
+		return nil
+	}
+	ctx.CAVCodecContext.stats_in = C.CString(*in)
+	if ctx.CAVCodecContext.stats_in == nil {
+		return ErrAllocationError
+	}
+	return nil
+}
+
+func (ctx *Context) StatsOut() (string, bool) {
+	return cStringToStringOk(ctx.CAVCodecContext.stats_out)
+}
+
+func (ctx *Context) SetStatsOut(out *string) error {
+	C.free(unsafe.Pointer(ctx.CAVCodecContext.stats_out))
+	if out == nil {
+		ctx.CAVCodecContext.stats_out = nil
+		return nil
+	}
+	ctx.CAVCodecContext.stats_out = C.CString(*out)
+	if ctx.CAVCodecContext.stats_out == nil {
+		return ErrAllocationError
+	}
+	return nil
 }
 
 func cStringToStringOk(cStr *C.char) (string, bool) {
