@@ -83,6 +83,15 @@ package avcodec
 //  return &samplefmt[n];
 //}
 //
+//static const AVProfile *go_av_profile_get(const AVProfile *profile, int n)
+//{
+//  if (profile == NULL)
+//  {
+//    return NULL;
+//  }
+//  return &profile[n];
+//}
+//
 //static int *go_av_int_get(int *arr, int n)
 //{
 //  if (arr == NULL)
@@ -473,6 +482,27 @@ func (pkt *Packet) SetConvergenceDuration(convergenceDuration int64) {
 	pkt.CAVPacket.convergence_duration = (C.int64_t)(convergenceDuration)
 }
 
+type Profile struct {
+	CAVProfile *C.AVProfile
+}
+
+func NewProfileFromC(cProfile unsafe.Pointer) *Profile {
+	return &Profile{CAVProfile: (*C.AVProfile)(cProfile)}
+}
+
+func (p *Profile) Name() string {
+	name, _ := p.NameOK()
+	return name
+}
+
+func (p *Profile) NameOK() (string, bool) {
+	return cStringToStringOk(p.CAVProfile.name)
+}
+
+func (p *Profile) ID() int {
+	return int(p.CAVProfile.profile)
+}
+
 type Codec struct {
 	CAVCodec *C.AVCodec
 }
@@ -620,6 +650,28 @@ func (c *Codec) SupportedChannelLayouts() []avutil.ChannelLayout {
 		channelLayouts = append(channelLayouts, channelLayout)
 	}
 	return channelLayouts
+}
+
+func (c *Codec) Profiles() []*Profile {
+	var profiles []*Profile
+	for i := 0; ; i++ {
+		cProfile := C.go_av_profile_get(c.CAVCodec.profiles, C.int(i))
+		if cProfile == nil || int(cProfile.profile) == ProfileUnknown {
+			break
+		}
+		profile := NewProfileFromC(unsafe.Pointer(cProfile))
+		profiles = append(profiles, profile)
+	}
+	return profiles
+}
+
+func (c *Codec) ProfileName(id int) string {
+	name, _ := c.ProfileNameOK(id)
+	return name
+}
+
+func (c *Codec) ProfileNameOK(id int) (string, bool) {
+	return cStringToStringOk(C.av_get_profile_name(c.CAVCodec, (C.int)(id)))
 }
 
 type Context struct {
