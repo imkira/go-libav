@@ -696,8 +696,8 @@ func (ctx *Context) SetDuration(duration int64) {
 	ctx.CAVFormatContext.duration = (C.int64_t)(duration)
 }
 
-func (ctx *Context) BitRate() int {
-	return int(ctx.CAVFormatContext.bit_rate)
+func (ctx *Context) BitRate() int64 {
+	return int64(ctx.CAVFormatContext.bit_rate)
 }
 
 func (ctx *Context) MaxDelay() int {
