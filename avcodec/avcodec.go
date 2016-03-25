@@ -344,12 +344,10 @@ type Packet struct {
 }
 
 func NewPacket() (*Packet, error) {
-	size := C.size_t(C.sizeof_AVPacket)
-	cPkt := (*C.AVPacket)(C.av_mallocz(size))
+	cPkt := (*C.AVPacket)(C.av_packet_alloc())
 	if cPkt == nil {
 		return nil, ErrAllocationError
 	}
-	C.av_packet_unref(cPkt)
 	return NewPacketFromC(unsafe.Pointer(cPkt)), nil
 }
 
@@ -358,11 +356,7 @@ func NewPacketFromC(cPkt unsafe.Pointer) *Packet {
 }
 
 func (pkt *Packet) Free() {
-	if pkt.CAVPacket != nil {
-		defer C.av_free(unsafe.Pointer(pkt.CAVPacket))
-		defer C.av_free_packet(pkt.CAVPacket)
-		pkt.CAVPacket = nil
-	}
+	C.av_packet_free(&pkt.CAVPacket)
 }
 
 func (pkt *Packet) Ref() (*Packet, error) {
@@ -412,12 +406,12 @@ func (pkt *Packet) SetDTS(dts int64) {
 	pkt.CAVPacket.dts = (C.int64_t)(dts)
 }
 
-func (pkt *Packet) Duration() int {
-	return int(pkt.CAVPacket.duration)
+func (pkt *Packet) Duration() int64 {
+	return int64(pkt.CAVPacket.duration)
 }
 
-func (pkt *Packet) SetDuration(duration int) {
-	pkt.CAVPacket.duration = (C.int)(duration)
+func (pkt *Packet) SetDuration(duration int64) {
+	pkt.CAVPacket.duration = (C.int64_t)(duration)
 }
 
 func (pkt *Packet) Data() unsafe.Pointer {
@@ -867,12 +861,12 @@ func (ctx *Context) SetOpaque(opaque unsafe.Pointer) {
 	ctx.CAVCodecContext.opaque = opaque
 }
 
-func (ctx *Context) BitRate() int {
-	return int(ctx.CAVCodecContext.bit_rate)
+func (ctx *Context) BitRate() int64 {
+	return int64(ctx.CAVCodecContext.bit_rate)
 }
 
-func (ctx *Context) SetBitRate(bitRate int) {
-	ctx.CAVCodecContext.bit_rate = (C.int)(bitRate)
+func (ctx *Context) SetBitRate(bitRate int64) {
+	ctx.CAVCodecContext.bit_rate = (C.int64_t)(bitRate)
 }
 
 func (ctx *Context) BitRateTolerance() int {
@@ -1510,20 +1504,20 @@ func (ctx *Context) RCOverrideCount() int {
 func (ctx *Context) SetRCOverrideCount(count int) {
 	ctx.CAVCodecContext.rc_override_count = (C.int)(count)
 }
-func (ctx *Context) RCMaxRate() int {
-	return int(ctx.CAVCodecContext.rc_max_rate)
+func (ctx *Context) RCMaxRate() int64 {
+	return int64(ctx.CAVCodecContext.rc_max_rate)
 }
 
-func (ctx *Context) SetRCMaxRate(max int) {
-	ctx.CAVCodecContext.rc_max_rate = (C.int)(max)
+func (ctx *Context) SetRCMaxRate(max int64) {
+	ctx.CAVCodecContext.rc_max_rate = (C.int64_t)(max)
 }
 
-func (ctx *Context) RCMinRate() int {
-	return int(ctx.CAVCodecContext.rc_min_rate)
+func (ctx *Context) RCMinRate() int64 {
+	return int64(ctx.CAVCodecContext.rc_min_rate)
 }
 
-func (ctx *Context) SetRCMinRate(min int) {
-	ctx.CAVCodecContext.rc_min_rate = (C.int)(min)
+func (ctx *Context) SetRCMinRate(min int64) {
+	ctx.CAVCodecContext.rc_min_rate = (C.int64_t)(min)
 }
 
 func (ctx *Context) RCMaxAvailableVBVUse() float32 {

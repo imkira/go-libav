@@ -30,6 +30,16 @@ func TestPacketFree(t *testing.T) {
 	}
 }
 
+func TestPacketDuration(t *testing.T) {
+	pkt, _ := NewPacket()
+	defer pkt.Free()
+	data := int64(100000)
+	pkt.SetDuration(data)
+	if pkt.Duration() != data {
+		t.Fatalf("packet duration expected:%d, got:%d", data, pkt.Duration())
+	}
+}
+
 func TestNewContextFromC(t *testing.T) {
 	ctx := NewContextFromC(nil)
 	if ctx == nil {
@@ -104,6 +114,7 @@ func TestCodecDescriptors(t *testing.T) {
 }
 
 func TestContextStatInOutOK(t *testing.T) {
+	ctx := testNewContextWithCodec(t, "mpeg4")
 	codec := FindEncoderByName("mpeg4")
 	if codec == nil {
 		t.Error("error")
@@ -211,4 +222,49 @@ func TestCodecProfiles(t *testing.T) {
 			t.Errorf("profile name expected:%s, got:%s", datas[i].name, profile.Name())
 		}
 	}
+}
+
+func TestContextBitRate(t *testing.T) {
+	ctx := testNewContextWithCodec(t, "h264")
+	defer ctx.Free()
+	data := int64(180)
+	ctx.SetBitRate(data)
+	if ctx.BitRate() != data {
+		t.Fatalf("context bitrate expected:%d, got:%d", data, ctx.BitRate())
+	}
+}
+
+func TestContextRCMaxRate(t *testing.T) {
+	ctx := testNewContextWithCodec(t, "h264")
+	defer ctx.Free()
+	data := int64(200)
+	ctx.SetRCMaxRate(data)
+	if ctx.RCMaxRate() != data {
+		t.Fatalf("context rc maxrate expected:%d, got:%d", data, ctx.RCMaxRate())
+	}
+}
+
+func TestContextRCMinRate(t *testing.T) {
+	ctx := testNewContextWithCodec(t, "h264")
+	defer ctx.Free()
+	data := int64(50)
+	ctx.SetRCMinRate(data)
+	if ctx.RCMinRate() != data {
+		t.Fatalf("context rc minrate expected:%d, got:%d", data, ctx.RCMinRate())
+	}
+}
+
+func testNewContextWithCodec(t *testing.T, name string) *Context {
+	codec := FindDecoderByName(name)
+	if codec == nil {
+		t.Fatalf("Expecting codec")
+	}
+	ctx, err := NewContextWithCodec(codec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx == nil {
+		t.Fatalf("Expecting context")
+	}
+	return ctx
 }

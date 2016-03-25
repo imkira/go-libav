@@ -13,7 +13,7 @@ before_install:
   - go get -u golang.org/x/tools/cmd/vet
   - sudo apt-get update
   - sudo apt-get install -y build-essential yasm libfaac-dev libmp3lame-dev libtheora-dev libvorbis-dev libvpx-dev libx264-dev libxvidcore-dev
-  - wget -O ffmpeg.tar.bz2 http://ffmpeg.org/releases/ffmpeg-2.8.3.tar.bz2
+  - wget -O ffmpeg.tar.bz2 http://ffmpeg.org/releases/ffmpeg-3.0.tar.bz2
   - mkdir ffmpeg && tar xvf ffmpeg.tar.bz2 -C ffmpeg --strip-components=1 && cd ffmpeg && ./configure --prefix=/usr/local --disable-debug --enable-pthreads --enable-nonfree --enable-gpl --disable-indev=jack --enable-libx264 --enable-libfaac --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libxvid --enable-libmp3lame --enable-openssl && make && sudo make install
 
 script:

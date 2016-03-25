@@ -18,26 +18,12 @@ package avfilter
 //  return links[n];
 //}
 //
-//static const AVFilterPad *go_av_pads_get(const AVFilterPad *p, unsigned int n)
+//static const int GO_AVERROR(int e)
 //{
-//  if (p == NULL)
-//  {
-//    return NULL;
-//  }
-//  p = &p[n];
-//  if (p->name == NULL)
-//  {
-//    return NULL;
-//  }
-//  return p;
+//  return AVERROR(e);
 //}
 //
-// static const int GO_AVERROR(int e)
-// {
-//   return AVERROR(e);
-// }
-//
-// #cgo pkg-config: libavfilter libavutil
+//#cgo pkg-config: libavfilter libavutil
 import "C"
 
 import (
@@ -105,14 +91,6 @@ func (f *Filter) DescriptionOk() (string, bool) {
 	return cStringToStringOk(f.CAVFilter.description)
 }
 
-func (f *Filter) Inputs() []*Pad {
-	return cPadArrayToPadSlice(f.CAVFilter.inputs)
-}
-
-func (f *Filter) Outputs() []*Pad {
-	return cPadArrayToPadSlice(f.CAVFilter.outputs)
-}
-
 func (f *Filter) PrivateClass() *avutil.Class {
 	if f.CAVFilter.priv_class == nil {
 		return nil
@@ -162,28 +140,12 @@ func (l *Link) Src() *Context {
 	return NewContextFromC(unsafe.Pointer(cContext))
 }
 
-func (l *Link) SrcPad() *Pad {
-	cPad := l.CAVFilterLink.srcpad
-	if cPad == nil {
-		return nil
-	}
-	return NewPadFromC(unsafe.Pointer(cPad))
-}
-
 func (l *Link) Dst() *Context {
 	cContext := l.CAVFilterLink.dst
 	if cContext == nil {
 		return nil
 	}
 	return NewContextFromC(unsafe.Pointer(cContext))
-}
-
-func (l *Link) DstPad() *Pad {
-	cPad := l.CAVFilterLink.dstpad
-	if cPad == nil {
-		return nil
-	}
-	return NewPadFromC(unsafe.Pointer(cPad))
 }
 
 func (l *Link) Type() avutil.MediaType {
@@ -250,57 +212,16 @@ func (l *Link) MaxSamples() int {
 	return int(l.CAVFilterLink.max_samples)
 }
 
-func (l *Link) Closed() bool {
-	return l.CAVFilterLink.closed != 0
-}
-
-func (l *Link) SetClosed(closed bool) {
-	var cClosed C.int
-	if closed {
-		cClosed = C.int(1)
-	}
-	C.avfilter_link_set_closed(l.CAVFilterLink, cClosed)
+func (l *Link) Status() int {
+	return int(l.CAVFilterLink.status)
 }
 
 func (l *Link) Channels() int {
 	return int(C.avfilter_link_get_channels(l.CAVFilterLink))
 }
 
-func (l *Link) FrameRequested() bool {
-	return l.CAVFilterLink.frame_requested != 0
-}
-
 func (l *Link) FrameCount() int64 {
 	return int64(l.CAVFilterLink.frame_count)
-}
-
-type Pad struct {
-	CAVFilterPad *C.AVFilterPad
-}
-
-func NewPadFromC(cPad unsafe.Pointer) *Pad {
-	return &Pad{CAVFilterPad: (*C.AVFilterPad)(cPad)}
-}
-
-func (p *Pad) Name() string {
-	str, _ := p.NameOk()
-	return str
-}
-
-func (p *Pad) NameOk() (string, bool) {
-	return cStringToStringOk(p.CAVFilterPad.name)
-}
-
-func (p *Pad) Type() avutil.MediaType {
-	return (avutil.MediaType)(p.CAVFilterPad._type)
-}
-
-func (p *Pad) NeedsFIFO() bool {
-	return p.CAVFilterPad.needs_fifo != 0
-}
-
-func (p *Pad) NeedsWritable() bool {
-	return p.CAVFilterPad.needs_writable != 0
 }
 
 type Context struct {
@@ -434,20 +355,6 @@ func (ctx *Context) Filter() *Filter {
 	return NewFilterFromC(unsafe.Pointer(cFilter))
 }
 
-func (ctx *Context) InputPads() []*Pad {
-	count := ctx.NumberOfInputs()
-	if count <= 0 {
-		return nil
-	}
-	pads := make([]*Pad, 0, count)
-	for i := uint(0); i < count; i++ {
-		cPad := C.go_av_pads_get(ctx.CAVFilterContext.input_pads, C.uint(i))
-		pad := NewPadFromC(unsafe.Pointer(cPad))
-		pads = append(pads, pad)
-	}
-	return pads
-}
-
 func (ctx *Context) Inputs() []*Link {
 	count := ctx.NumberOfInputs()
 	if count <= 0 {
@@ -464,20 +371,6 @@ func (ctx *Context) Inputs() []*Link {
 
 func (ctx *Context) NumberOfInputs() uint {
 	return uint(ctx.CAVFilterContext.nb_inputs)
-}
-
-func (ctx *Context) OutputPads() []*Pad {
-	count := ctx.NumberOfOutputs()
-	if count <= 0 {
-		return nil
-	}
-	pads := make([]*Pad, 0, count)
-	for i := uint(0); i < count; i++ {
-		cPad := C.go_av_pads_get(ctx.CAVFilterContext.output_pads, C.uint(i))
-		pad := NewPadFromC(unsafe.Pointer(cPad))
-		pads = append(pads, pad)
-	}
-	return pads
 }
 
 func (ctx *Context) Outputs() []*Link {
@@ -679,17 +572,4 @@ func cStringToStringOk(cStr *C.char) (string, bool) {
 		return "", false
 	}
 	return C.GoString(cStr), true
-}
-
-func cPadArrayToPadSlice(cPads *C.AVFilterPad) []*Pad {
-	var pads []*Pad
-	for i := C.uint(0); ; i++ {
-		cPad := C.go_av_pads_get(cPads, i)
-		if cPad == nil {
-			break
-		}
-		pad := NewPadFromC(unsafe.Pointer(cPad))
-		pads = append(pads, pad)
-	}
-	return pads
 }

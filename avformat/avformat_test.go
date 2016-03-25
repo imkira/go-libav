@@ -347,6 +347,10 @@ func TestGuessFrameRate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if ctx.BitRate() <= 0 {
+		t.Fatalf("[TestGuessFrameRate] bitrate result = %d, NG, expected greater than 0", ctx.BitRate())
+	}
+
 	expected := [][]int{{0, 0}, {30, 1}}
 	for i, stream := range ctx.Streams() {
 		result := ctx.GuessFrameRate(stream, nil)
