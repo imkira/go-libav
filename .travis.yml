@@ -7,6 +7,7 @@ go:
   - tip
 
 before_install:
+  - echo $TRAVIS_GO_VERSION
   - go get -u golang.org/x/tools/cmd/cover
   - if [[ $TRAVIS_GO_VERSION != go1.4* ]]; then go get -u github.com/golang/lint/golint; fi
   - go get -u golang.org/x/tools/cmd/vet
