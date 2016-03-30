@@ -23,8 +23,10 @@ The reason I decided to build go-libav was because I wanted to have:
 
 # Installation
 
-First, install ffmpeg libraries on your system.
-I have tested it with ffmpeg 2.6.4 and later.
+First, install ffmpeg 3.x libraries on your system.
+
+If you need ffmpeg2.x support, use
+[ffmpeg2](https://github.com/imkira/go-libav/tree/ffmpeg2) branch (deprecated).
 
 Then, open the terminal and install the following packages:
 
