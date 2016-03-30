@@ -3,6 +3,8 @@ package avcodec
 import (
 	"testing"
 
+	"bytes"
+
 	"github.com/imkira/go-libav/avutil"
 )
 
@@ -132,49 +134,52 @@ func TestContextStatInOutOK(t *testing.T) {
 	}
 	defer ctx.Free()
 
-	expected := "test"
-	if err := ctx.SetStatsIn(avutil.String(expected)); err != nil {
-		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+	expected := []byte("stats_in")
+	if err := ctx.SetStatsIn(expected); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected is not error", err)
 	}
-	result, ok := ctx.StatsIn()
-	if !ok {
-		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=true", ok)
-	}
-	if result != expected {
+	result := ctx.StatsIn()
+	if !bytes.Equal(result, expected) {
 		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=%s", result, expected)
 	}
-
+	expected = []byte{}
+	if err := ctx.SetStatsIn(expected); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected is not error", err)
+	}
+	result = ctx.StatsIn()
+	if !bytes.Equal(result, expected) {
+		t.Fatalf("[TestContextStatInOutOK] result=%v NG, expected=%v", result, expected)
+	}
 	if err := ctx.SetStatsIn(nil); err != nil {
-		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected is not error", err)
 	}
-	result, ok = ctx.StatsIn()
-	if ok {
-		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=false", ok)
-	}
-	if result != "" {
-		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=\"\"(empty)", result)
+	result = ctx.StatsIn()
+	if result != nil {
+		t.Fatalf("[TestContextStatInOutOK] result=%v NG, expected=nil", result)
 	}
 
-	if err := ctx.SetStatsOut(avutil.String(expected)); err != nil {
-		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+	expected = []byte("stats_out")
+	if err := ctx.SetStatsOut(expected); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected is not error", err)
 	}
-	result, ok = ctx.StatsOut()
-	if !ok {
-		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=true", ok)
-	}
-	if result != expected {
+	result = ctx.StatsOut()
+	if !bytes.Equal(result, expected) {
 		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=%s", result, expected)
 	}
-
+	expected = []byte{}
+	if err := ctx.SetStatsOut(expected); err != nil {
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected is not error", err)
+	}
+	result = ctx.StatsOut()
+	if !bytes.Equal(result, expected) {
+		t.Fatalf("[TestContextStatInOutOK] result=%v NG, expected=%v", result, expected)
+	}
 	if err := ctx.SetStatsOut(nil); err != nil {
-		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected not error", err)
+		t.Fatalf("[TestContextStatInOutOK] err=%v NG, expected is not error", err)
 	}
-	result, ok = ctx.StatsOut()
-	if ok {
-		t.Fatalf("[TestContextStatInOutOK] ok=%t, NG, expected ok=false", ok)
-	}
-	if result != "" {
-		t.Fatalf("[TestContextStatInOutOK] result=%s NG, expected=\"\"(empty)", result)
+	result = ctx.StatsOut()
+	if result != nil {
+		t.Fatalf("[TestContextStatInOutOK] result=%v NG, expected=nil", result)
 	}
 }
 
