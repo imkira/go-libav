@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+func TestVersion(t *testing.T) {
+	major, minor, micro := Version()
+	if major < 55 || minor < 0 || micro < 0 {
+		t.Fatalf("Invalid version")
+	}
+}
+
 func TestNewErrorFromCode(t *testing.T) {
 	err := NewErrorFromCode(0)
 	if err == nil {

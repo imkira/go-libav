@@ -23,6 +23,10 @@ package avfilter
 //  return AVERROR(e);
 //}
 //
+// int GO_AVFILTER_VERSION_MAJOR = LIBAVFILTER_VERSION_MAJOR;
+// int GO_AVFILTER_VERSION_MINOR = LIBAVFILTER_VERSION_MINOR;
+// int GO_AVFILTER_VERSION_MICRO = LIBAVFILTER_VERSION_MICRO;
+//
 //#cgo pkg-config: libavfilter libavutil
 import "C"
 
@@ -59,6 +63,10 @@ const (
 
 func init() {
 	RegisterAll()
+}
+
+func Version() (int, int, int) {
+	return int(C.GO_AVFILTER_VERSION_MAJOR), int(C.GO_AVFILTER_VERSION_MINOR), int(C.GO_AVFILTER_VERSION_MICRO)
 }
 
 func RegisterAll() {

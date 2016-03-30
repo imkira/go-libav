@@ -10,6 +10,13 @@ import (
 	"github.com/imkira/go-libav/avutil"
 )
 
+func TestVersion(t *testing.T) {
+	major, minor, micro := Version()
+	if major < 57 || minor < 0 || micro < 0 {
+		t.Fatalf("Invalid version")
+	}
+}
+
 func testInputFormatMatroska(t *testing.T, f *Input) {
 	if f == nil {
 		t.Fatalf("Expecting format")

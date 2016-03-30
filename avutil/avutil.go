@@ -47,6 +47,10 @@ package avutil
 //  return AVERROR(e);
 //}
 //
+// int GO_AVUTIL_VERSION_MAJOR = LIBAVUTIL_VERSION_MAJOR;
+// int GO_AVUTIL_VERSION_MINOR = LIBAVUTIL_VERSION_MINOR;
+// int GO_AVUTIL_VERSION_MICRO = LIBAVUTIL_VERSION_MICRO;
+//
 // #cgo pkg-config: libavutil
 import "C"
 
@@ -153,6 +157,10 @@ const (
 
 func init() {
 	SetLogLevel(LogLevelQuiet)
+}
+
+func Version() (int, int, int) {
+	return int(C.GO_AVUTIL_VERSION_MAJOR), int(C.GO_AVUTIL_VERSION_MINOR), int(C.GO_AVUTIL_VERSION_MICRO)
 }
 
 func SetLogLevel(level LogLevel) {

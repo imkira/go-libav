@@ -7,6 +7,13 @@ import (
 	"github.com/imkira/go-libav/avutil"
 )
 
+func TestVersion(t *testing.T) {
+	major, minor, micro := Version()
+	if major < 6 || minor < 0 || micro < 0 {
+		t.Fatalf("Invalid version")
+	}
+}
+
 func TestNewFilterFromC(t *testing.T) {
 	ctx := NewFilterFromC(nil)
 	if ctx == nil {

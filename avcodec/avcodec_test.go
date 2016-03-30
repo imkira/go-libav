@@ -6,6 +6,13 @@ import (
 	"github.com/imkira/go-libav/avutil"
 )
 
+func TestVersion(t *testing.T) {
+	major, minor, micro := Version()
+	if major < 57 || minor < 0 || micro < 0 {
+		t.Fatalf("Invalid version")
+	}
+}
+
 func TestNewPacket(t *testing.T) {
 	pkt, err := NewPacket()
 	if err != nil {

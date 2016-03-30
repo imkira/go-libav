@@ -115,6 +115,10 @@ package avcodec
 //  return list[idx];
 //}
 //
+// int GO_AVCODEC_VERSION_MAJOR = LIBAVCODEC_VERSION_MAJOR;
+// int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
+// int GO_AVCODEC_VERSION_MICRO = LIBAVCODEC_VERSION_MICRO;
+//
 // #cgo pkg-config: libavcodec libavutil
 import "C"
 
@@ -301,6 +305,10 @@ const (
 
 func init() {
 	RegisterAll()
+}
+
+func Version() (int, int, int) {
+	return int(C.GO_AVCODEC_VERSION_MAJOR), int(C.GO_AVCODEC_VERSION_MINOR), int(C.GO_AVCODEC_VERSION_MICRO)
 }
 
 func RegisterAll() {

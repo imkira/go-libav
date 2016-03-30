@@ -29,6 +29,10 @@ package avformat
 //
 // size_t sizeOfAVFormatContextFilename = sizeof(((AVFormatContext *)NULL)->filename);
 //
+// int GO_AVFORMAT_VERSION_MAJOR = LIBAVFORMAT_VERSION_MAJOR;
+// int GO_AVFORMAT_VERSION_MINOR = LIBAVFORMAT_VERSION_MINOR;
+// int GO_AVFORMAT_VERSION_MICRO = LIBAVFORMAT_VERSION_MICRO;
+//
 // #cgo pkg-config: libavformat libavutil
 import "C"
 
@@ -151,6 +155,10 @@ const (
 
 func init() {
 	RegisterAll()
+}
+
+func Version() (int, int, int) {
+	return int(C.GO_AVFORMAT_VERSION_MAJOR), int(C.GO_AVFORMAT_VERSION_MINOR), int(C.GO_AVFORMAT_VERSION_MICRO)
 }
 
 func RegisterAll() {
