@@ -1904,37 +1904,55 @@ func (ctx *Context) CodecWhitelist() []string {
 	return cStringSplit(ctx.CAVCodecContext.codec_whitelist, ",")
 }
 
-func (ctx *Context) StatsIn() (string, bool) {
-	return cStringToStringOk(ctx.CAVCodecContext.stats_in)
-}
-
-func (ctx *Context) SetStatsIn(in *string) error {
-	C.free(unsafe.Pointer(ctx.CAVCodecContext.stats_in))
-	if in == nil {
-		ctx.CAVCodecContext.stats_in = nil
+func (ctx *Context) StatsIn() []byte {
+	if ctx.CAVCodecContext.stats_in == nil {
 		return nil
 	}
-	ctx.CAVCodecContext.stats_in = C.CString(*in)
-	if ctx.CAVCodecContext.stats_in == nil {
+	length := int(C.strlen(ctx.CAVCodecContext.stats_in))
+	return (*[1 << 30]byte)(unsafe.Pointer(ctx.CAVCodecContext.stats_in))[:length:length]
+}
+
+func (ctx *Context) SetStatsIn(in []byte) error {
+	C.av_freep(unsafe.Pointer(&ctx.CAVCodecContext.stats_in))
+	if in == nil {
+		return nil
+	}
+	length := len(in)
+	cIn := (*C.char)(C.av_malloc(C.size_t(length + 1)))
+	if cIn == nil {
 		return ErrAllocationError
 	}
+	if len(in) > 0 {
+		C.memcpy(unsafe.Pointer(cIn), unsafe.Pointer(&in[0]), C.size_t(length))
+	}
+	C.memset(unsafe.Pointer(uintptr(unsafe.Pointer(cIn))+uintptr(length)), 0, 1)
+	ctx.CAVCodecContext.stats_in = cIn
 	return nil
 }
 
-func (ctx *Context) StatsOut() (string, bool) {
-	return cStringToStringOk(ctx.CAVCodecContext.stats_out)
-}
-
-func (ctx *Context) SetStatsOut(out *string) error {
-	C.free(unsafe.Pointer(ctx.CAVCodecContext.stats_out))
-	if out == nil {
-		ctx.CAVCodecContext.stats_out = nil
+func (ctx *Context) StatsOut() []byte {
+	if ctx.CAVCodecContext.stats_out == nil {
 		return nil
 	}
-	ctx.CAVCodecContext.stats_out = C.CString(*out)
-	if ctx.CAVCodecContext.stats_out == nil {
+	length := int(C.strlen(ctx.CAVCodecContext.stats_out))
+	return (*[1 << 30]byte)(unsafe.Pointer(ctx.CAVCodecContext.stats_out))[:length:length]
+}
+
+func (ctx *Context) SetStatsOut(out []byte) error {
+	C.av_freep(unsafe.Pointer(&ctx.CAVCodecContext.stats_out))
+	if out == nil {
+		return nil
+	}
+	length := len(out)
+	cOut := (*C.char)(C.av_malloc(C.size_t(length + 1)))
+	if cOut == nil {
 		return ErrAllocationError
 	}
+	if len(out) > 0 {
+		C.memcpy(unsafe.Pointer(cOut), unsafe.Pointer(&out[0]), C.size_t(length))
+	}
+	C.memset(unsafe.Pointer(uintptr(unsafe.Pointer(cOut))+uintptr(length)), 0, 1)
+	ctx.CAVCodecContext.stats_out = cOut
 	return nil
 }
 
