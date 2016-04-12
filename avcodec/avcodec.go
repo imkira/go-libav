@@ -367,17 +367,12 @@ func (pkt *Packet) Free() {
 	C.av_packet_free(&pkt.CAVPacket)
 }
 
-func (pkt *Packet) Ref() (*Packet, error) {
-	dst, err := NewPacket()
-	if err != nil {
-		return nil, err
-	}
+func (pkt *Packet) Ref(dst *Packet) error {
 	code := C.av_packet_ref(dst.CAVPacket, pkt.CAVPacket)
 	if code < 0 {
-		defer dst.Free()
-		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return dst, nil
+	return nil
 }
 
 func (pkt *Packet) Unref() {
