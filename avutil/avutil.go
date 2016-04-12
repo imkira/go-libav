@@ -483,7 +483,7 @@ func NewDictionaryFromC(cDictionary unsafe.Pointer) *Dictionary {
 }
 
 func (dict *Dictionary) Free() {
-	defer C.av_dict_free(dict.pointer())
+	C.av_dict_free(dict.pointer())
 }
 
 func (dict *Dictionary) Pointer() unsafe.Pointer {
@@ -739,8 +739,7 @@ func NewFrameFromC(cFrame unsafe.Pointer) *Frame {
 
 func (f *Frame) Free() {
 	if f.CAVFrame != nil {
-		defer C.av_frame_free(&f.CAVFrame)
-		f.CAVFrame = nil
+		C.av_frame_free(&f.CAVFrame)
 	}
 }
 

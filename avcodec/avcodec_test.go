@@ -1,11 +1,13 @@
 package avcodec
 
 import (
+	"os"
 	"testing"
 
 	"bytes"
 
 	"github.com/imkira/go-libav/avutil"
+	"github.com/shirou/gopsutil/process"
 )
 
 func TestVersion(t *testing.T) {
@@ -47,6 +49,18 @@ func TestPacketDuration(t *testing.T) {
 	if pkt.Duration() != data {
 		t.Fatalf("packet duration expected:%d, got:%d", data, pkt.Duration())
 	}
+}
+
+func TestPacketNewFreeLeak10M(t *testing.T) {
+	before := testMemoryUsed(t)
+	for i := 0; i < 10000000; i++ {
+		pkt, err := NewPacket()
+		if err != nil {
+			t.Fatal(err)
+		}
+		pkt.Free()
+	}
+	testMemoryLeak(t, before, 50*1024*1024)
 }
 
 func TestNewContextFromC(t *testing.T) {
@@ -266,6 +280,15 @@ func TestContextRCMinRate(t *testing.T) {
 	}
 }
 
+func TestContextNewFreeLeak1M(t *testing.T) {
+	before := testMemoryUsed(t)
+	for i := 0; i < 1000000; i++ {
+		ctx := testNewContextWithCodec(t, "mpeg4")
+		ctx.Free()
+	}
+	testMemoryLeak(t, before, 50*1024*1024)
+}
+
 func testNewContextWithCodec(t *testing.T, name string) *Context {
 	codec := FindDecoderByName(name)
 	if codec == nil {
@@ -279,4 +302,23 @@ func testNewContextWithCodec(t *testing.T, name string) *Context {
 		t.Fatalf("Expecting context")
 	}
 	return ctx
+}
+
+func testMemoryUsed(t *testing.T) uint64 {
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := p.MemoryInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.RSS
+}
+
+func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
+	after := testMemoryUsed(t)
+	if after > before && after-before > diff {
+		t.Fatalf("memory leak detected: %d bytes", after-before)
+	}
 }

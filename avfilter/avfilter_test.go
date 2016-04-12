@@ -1,10 +1,12 @@
 package avfilter
 
 import (
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/imkira/go-libav/avutil"
+	"github.com/shirou/gopsutil/process"
 )
 
 func TestVersion(t *testing.T) {
@@ -57,14 +59,23 @@ func TestFilterByNameInvalidNameParam(t *testing.T) {
 	}
 }
 
-func TestAddFilterOK(t *testing.T) {
+func TestGraphAddFilterOK(t *testing.T) {
 	graph := testNewGraph(t)
 	defer graph.Free()
-	testAddFilter(t, graph, "scale", "rescale")
-	testAddFilter(t, graph, "fps", "fps1")
+	testGraphAddFilter(t, graph, "scale", "rescale")
+	testGraphAddFilter(t, graph, "fps", "fps1")
 	if graph.NumberOfFilters() != 2 {
 		t.Fatalf("[TestAddFilterOK] number of filters expected: 2, got: %d", graph.NumberOfFilters())
 	}
+}
+
+func TestGraphNewFreeLeak10M(t *testing.T) {
+	before := testMemoryUsed(t)
+	for i := 0; i < 10000000; i++ {
+		graph := testNewGraph(t)
+		graph.Free()
+	}
+	testMemoryLeak(t, before, 50*1024*1024)
 }
 
 func testFilterByName(t *testing.T, name string) *Filter {
@@ -78,7 +89,7 @@ func testFilterByName(t *testing.T, name string) *Filter {
 	return filter
 }
 
-func testAddFilter(t *testing.T, graph *Graph, name, id string) *Context {
+func testGraphAddFilter(t *testing.T, graph *Graph, name, id string) *Context {
 	filter := testFilterByName(t, name)
 	ctx, err := graph.AddFilter(filter, id)
 	if err != nil {
@@ -111,4 +122,35 @@ func testNewGraph(t *testing.T) *Graph {
 		t.Fatalf("Expecting filter graph")
 	}
 	return graph
+}
+
+func TestInOutNewFreeLeak10M(t *testing.T) {
+	before := testMemoryUsed(t)
+	for i := 0; i < 10000000; i++ {
+		io, err := NewInOut()
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.Free()
+	}
+	testMemoryLeak(t, before, 50*1024*1024)
+}
+
+func testMemoryUsed(t *testing.T) uint64 {
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := p.MemoryInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.RSS
+}
+
+func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
+	after := testMemoryUsed(t)
+	if after > before && after-before > diff {
+		t.Fatalf("memory leak detected: %d bytes", after-before)
+	}
 }

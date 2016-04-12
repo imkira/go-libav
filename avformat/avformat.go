@@ -852,9 +852,7 @@ func NewIOContextFromC(cCtx unsafe.Pointer) *IOContext {
 
 func (ctx *IOContext) Close() error {
 	if ctx.CAVIOContext != nil {
-		cCtx := ctx.CAVIOContext
-		ctx.CAVIOContext = nil
-		code := C.avio_close(cCtx)
+		code := C.avio_closep(&ctx.CAVIOContext)
 		if code < 0 {
 			return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		}

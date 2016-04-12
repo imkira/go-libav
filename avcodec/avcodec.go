@@ -693,8 +693,7 @@ func NewContextFromC(cCtx unsafe.Pointer) *Context {
 
 func (ctx *Context) Free() {
 	if ctx.CAVCodecContext != nil {
-		defer C.avcodec_free_context(&ctx.CAVCodecContext)
-		ctx.CAVCodecContext = nil
+		C.avcodec_free_context(&ctx.CAVCodecContext)
 	}
 }
 

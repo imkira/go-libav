@@ -421,8 +421,7 @@ func NewGraphFromC(cGraph unsafe.Pointer) *Graph {
 
 func (g *Graph) Free() {
 	if g.CAVFilterGraph != nil {
-		defer C.avfilter_graph_free(&g.CAVFilterGraph)
-		g.CAVFilterGraph = nil
+		C.avfilter_graph_free(&g.CAVFilterGraph)
 	}
 }
 
@@ -513,8 +512,7 @@ func NewInOutFromC(cInOut unsafe.Pointer) *InOut {
 
 func (io *InOut) Free() {
 	if io.CAVFilterInOut != nil {
-		defer C.avfilter_inout_free(&io.CAVFilterInOut)
-		io.CAVFilterInOut = nil
+		C.avfilter_inout_free(&io.CAVFilterInOut)
 	}
 }
 
