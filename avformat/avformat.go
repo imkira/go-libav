@@ -22,9 +22,9 @@ package avformat
 //  return (AVDictionary**)malloc(size);
 //}
 //
-//static void go_av_dicts_set(AVDictionary** arr, int i, AVDictionary *val)
+//static void go_av_dicts_set(AVDictionary** arr, unsigned int n, AVDictionary *val)
 //{
-//  arr[i] = val;
+//  arr[n] = val;
 //}
 //
 // size_t sizeOfAVFormatContextFilename = sizeof(((AVFormatContext *)NULL)->filename);
@@ -895,10 +895,7 @@ func cStringToStringOk(cStr *C.char) (string, bool) {
 func newCAVDictionaryArrayFromDictionarySlice(dicts []*avutil.Dictionary) **C.AVDictionary {
 	arr := C.go_av_alloc_dicts(C.int(len(dicts)))
 	for i := range dicts {
-		if dicts[i] == nil {
-			dicts[i] = avutil.NewDictionary()
-		}
-		C.go_av_dicts_set(arr, C.int(i), (*C.AVDictionary)(dicts[i].Value()))
+		C.go_av_dicts_set(arr, C.uint(i), (*C.AVDictionary)(dicts[i].Value()))
 	}
 	return nil
 }
