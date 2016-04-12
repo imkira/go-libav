@@ -1,9 +1,12 @@
 package avutil
 
 import (
+	"os"
 	"reflect"
 	"syscall"
 	"testing"
+
+	"github.com/shirou/gopsutil/process"
 )
 
 func TestVersion(t *testing.T) {
@@ -381,6 +384,18 @@ func TestDictionaryCopyNonEmpty(t *testing.T) {
 	}
 }
 
+func TestDictionaryNewSetFreeLeak10M(t *testing.T) {
+	before := testMemoryUsed(t)
+	for i := 0; i < 10000000; i++ {
+		dict := NewDictionary()
+		if err := dict.Set("test", "value"); err != nil {
+			t.Fatal(err)
+		}
+		dict.Free()
+	}
+	testMemoryLeak(t, before, 50*1024*1024)
+}
+
 func TestChannelLayouts(t *testing.T) {
 	layouts := ChannelLayouts()
 	if len(layouts) == 0 {
@@ -481,6 +496,16 @@ func TestFrameGetBuffer(t *testing.T) {
 	}
 	if frame.Data(0) == nil {
 		t.Fatalf("Expecting data")
+	}
+}
+
+func TestFrameNewFreeLeak10M(t *testing.T) {
+	for i := 0; i < 10000000; i++ {
+		frame, err := NewFrame()
+		if err != nil {
+			t.Fatal(err)
+		}
+		frame.Free()
 	}
 }
 
@@ -617,5 +642,24 @@ func TestString(t *testing.T) {
 	}
 	if *result != expected {
 		t.Fatalf("[TestString] result=%s, NG expected=%s", *result, expected)
+	}
+}
+
+func testMemoryUsed(t *testing.T) uint64 {
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := p.MemoryInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.RSS
+}
+
+func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
+	after := testMemoryUsed(t)
+	if after > before && after-before > diff {
+		t.Fatalf("memory leak detected: %d bytes", after-before)
 	}
 }

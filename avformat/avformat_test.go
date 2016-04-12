@@ -2,12 +2,14 @@ package avformat
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/imkira/go-libav/avutil"
+	"github.com/shirou/gopsutil/process"
 )
 
 func TestVersion(t *testing.T) {
@@ -448,5 +450,53 @@ func TestContextSetMetaData(t *testing.T) {
 	fmtCtx.SetMetaData(metadata)
 	if count := fmtCtx.MetaData().Count(); count != 1 {
 		t.Fatalf("Expecting count but got %d", count)
+	}
+}
+
+func TestContextNewFreeLeak1M(t *testing.T) {
+	before := testMemoryUsed(t)
+	for i := 0; i < 1000000; i++ {
+		ctx, err := NewContextForInput()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx.Free()
+	}
+	testMemoryLeak(t, before, 50*1024*1024)
+}
+
+func TestIOContextOpenCloseLeak100K(t *testing.T) {
+	flags := IOFlagWrite
+	f, err := ioutil.TempFile("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	url := f.Name()
+	for i := 0; i < 100000; i++ {
+		ioCtx, err := OpenIOContext(url, flags, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ioCtx.Close()
+	}
+}
+
+func testMemoryUsed(t *testing.T) uint64 {
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := p.MemoryInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.RSS
+}
+
+func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
+	after := testMemoryUsed(t)
+	if after > before && after-before > diff {
+		t.Fatalf("memory leak detected: %d bytes", after-before)
 	}
 }

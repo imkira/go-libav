@@ -245,8 +245,7 @@ func NewContextFromC(cCtx unsafe.Pointer) *Context {
 }
 
 func (ctx *Context) Init() error {
-	dict := avutil.NewDictionary()
-	return ctx.InitWithDictionary(dict)
+	return ctx.InitWithDictionary(nil)
 }
 
 func (ctx *Context) InitWithString(args string) error {
@@ -422,8 +421,7 @@ func NewGraphFromC(cGraph unsafe.Pointer) *Graph {
 
 func (g *Graph) Free() {
 	if g.CAVFilterGraph != nil {
-		defer C.avfilter_graph_free(&g.CAVFilterGraph)
-		g.CAVFilterGraph = nil
+		C.avfilter_graph_free(&g.CAVFilterGraph)
 	}
 }
 
@@ -514,8 +512,7 @@ func NewInOutFromC(cInOut unsafe.Pointer) *InOut {
 
 func (io *InOut) Free() {
 	if io.CAVFilterInOut != nil {
-		defer C.avfilter_inout_free(&io.CAVFilterInOut)
-		io.CAVFilterInOut = nil
+		C.avfilter_inout_free(&io.CAVFilterInOut)
 	}
 }
 
