@@ -1310,7 +1310,10 @@ func (e *Expr) Evaluate(constValues []float64) (float64, error) {
 }
 
 func (e *Expr) Free() {
-	defer C.av_expr_free(e.CAVExpr)
+	if e.CAVExpr != nil {
+		defer C.av_expr_free(e.CAVExpr)
+		e.CAVExpr = nil
+	}
 }
 
 func String(str string) *string {

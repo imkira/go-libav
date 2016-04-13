@@ -1908,7 +1908,7 @@ func (ctx *Context) StatsIn() []byte {
 
 func (ctx *Context) SetStatsIn(in []byte) error {
 	C.av_freep(unsafe.Pointer(&ctx.CAVCodecContext.stats_in))
-	if in == nil {
+	if len(in) == 0 {
 		return nil
 	}
 	length := len(in)
@@ -1934,7 +1934,7 @@ func (ctx *Context) StatsOut() []byte {
 
 func (ctx *Context) SetStatsOut(out []byte) error {
 	C.av_freep(unsafe.Pointer(&ctx.CAVCodecContext.stats_out))
-	if out == nil {
+	if len(out) == 0 {
 		return nil
 	}
 	length := len(out)
