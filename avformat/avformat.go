@@ -19,7 +19,7 @@ package avformat
 //static AVDictionary **go_av_alloc_dicts(int length)
 //{
 //  size_t size = sizeof(AVDictionary*) * length;
-//  return (AVDictionary**)malloc(size);
+//  return (AVDictionary**)av_malloc(size);
 //}
 //
 //static void go_av_dicts_set(AVDictionary** arr, unsigned int n, AVDictionary *val)
@@ -249,37 +249,49 @@ func NewProbeData() *ProbeData {
 func (pd *ProbeData) Free() {
 	defer C.free(unsafe.Pointer(pd.CAVProbeData.filename))
 	pd.CAVProbeData.filename = nil
-	C.av_free(unsafe.Pointer(pd.CAVProbeData.buf))
-	pd.CAVProbeData.buf = nil
+	defer C.av_freep(unsafe.Pointer(&pd.CAVProbeData.buf))
 	pd.CAVProbeData.buf_size = 0
 	defer C.free(unsafe.Pointer(pd.CAVProbeData.mime_type))
 	pd.CAVProbeData.mime_type = nil
 }
 
-func (pd *ProbeData) SetFileName(fileName string) error {
+func (pd *ProbeData) SetFileName(fileName *string) error {
 	C.free(unsafe.Pointer(pd.CAVProbeData.filename))
-	pd.CAVProbeData.filename = C.CString(fileName)
+	if fileName == nil {
+		pd.CAVProbeData.filename = nil
+		return nil
+	}
+	pd.CAVProbeData.filename = C.CString(*fileName)
 	if pd.CAVProbeData.filename == nil {
 		return ErrAllocationError
 	}
 	return nil
 }
 
-func (pd *ProbeData) SetBuffer(buffer []byte) {
+func (pd *ProbeData) SetBuffer(buffer []byte) error {
+	pd.CAVProbeData.buf_size = 0
+	C.av_freep(unsafe.Pointer(&pd.CAVProbeData.buf))
+	if len(buffer) == 0 {
+		return nil
+	}
 	size := C.size_t(len(buffer))
 	extraSize := C.size_t(C.AVPROBE_PADDING_SIZE)
-	buf := (*C.uchar)(C.av_malloc(size + extraSize))
-	if len(buffer) > 0 {
-		C.memcpy(unsafe.Pointer(buf), unsafe.Pointer(&buffer[0]), size)
+	buf := (*C.uchar)(C.av_memdup(unsafe.Pointer(&buffer[0]), size+extraSize))
+	if buf == nil {
+		return ErrAllocationError
 	}
-	C.free(unsafe.Pointer(pd.CAVProbeData.buf))
 	pd.CAVProbeData.buf = buf
 	pd.CAVProbeData.buf_size = C.int(size)
+	return nil
 }
 
-func (pd *ProbeData) SetMimeType(mimeType string) error {
+func (pd *ProbeData) SetMimeType(mimeType *string) error {
 	C.free(unsafe.Pointer(pd.CAVProbeData.mime_type))
-	pd.CAVProbeData.mime_type = C.CString(mimeType)
+	if mimeType == nil {
+		pd.CAVProbeData.mime_type = nil
+		return nil
+	}
+	pd.CAVProbeData.mime_type = C.CString(*mimeType)
 	if pd.CAVProbeData.mime_type == nil {
 		return ErrAllocationError
 	}
@@ -899,5 +911,5 @@ func newCAVDictionaryArrayFromDictionarySlice(dicts []*avutil.Dictionary) **C.AV
 }
 
 func freeCAVDictionaryArray(arr **C.AVDictionary) {
-	C.free(unsafe.Pointer(arr))
+	C.av_free(unsafe.Pointer(arr))
 }

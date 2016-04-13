@@ -77,12 +77,12 @@ func TestProbeInput(t *testing.T) {
 
 	pd = NewProbeData()
 	defer pd.Free()
-	pd.SetFileName("file.mkv")
+	pd.SetFileName(avutil.String("file.mkv"))
 	testInputFormatMatroska(t, ProbeInput(pd, true))
 
 	pd = NewProbeData()
 	defer pd.Free()
-	pd.SetMimeType("video/x-matroska")
+	pd.SetMimeType(avutil.String("video/x-matroska"))
 	testInputFormatMatroska(t, ProbeInput(pd, true))
 
 	pd = NewProbeData()
