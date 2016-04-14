@@ -245,7 +245,9 @@ func NewContextFromC(cCtx unsafe.Pointer) *Context {
 }
 
 func (ctx *Context) Init() error {
-	return ctx.InitWithDictionary(nil)
+	options := avutil.NewDictionary()
+	defer options.Free()
+	return ctx.InitWithDictionary(options)
 }
 
 func (ctx *Context) InitWithString(args string) error {
