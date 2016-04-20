@@ -559,9 +559,9 @@ func (dict *Dictionary) set(key, value string, flags C.int) error {
 	defer C.free(unsafe.Pointer(cKey))
 	cValue := C.CString(value)
 	defer C.free(unsafe.Pointer(cValue))
-	code := ErrorCode(C.av_dict_set(dict.pointer(), cKey, cValue, flags))
+	code := C.av_dict_set(dict.pointer(), cKey, cValue, flags)
 	if code < 0 {
-		return NewErrorFromCode(code)
+		return NewErrorFromCode(ErrorCode(code))
 	}
 	return nil
 }
@@ -573,9 +573,9 @@ func (dict *Dictionary) Set(key, value string) error {
 func (dict *Dictionary) Delete(key string) error {
 	cKey := C.CString(key)
 	defer C.free(unsafe.Pointer(cKey))
-	code := ErrorCode(C.av_dict_set(dict.pointer(), cKey, nil, 0))
+	code := C.av_dict_set(dict.pointer(), cKey, nil, 0)
 	if code < 0 {
-		return NewErrorFromCode(code)
+		return NewErrorFromCode(ErrorCode(code))
 	}
 	return nil
 }
@@ -643,6 +643,16 @@ func (dict *Dictionary) Copy() *Dictionary {
 	newDict := NewDictionary()
 	C.av_dict_copy(newDict.pointer(), dict.value(), C.AV_DICT_MATCH_CASE)
 	return newDict
+}
+
+func (dict *Dictionary) String(keyValSep, pairsSep byte) (string, error) {
+	buf := (*C.char)(nil)
+	defer C.av_free(unsafe.Pointer(buf))
+	code := C.av_dict_get_string(dict.value(), &buf, C.char(keyValSep), C.char(pairsSep))
+	if code < 0 {
+		return "", NewErrorFromCode(ErrorCode(code))
+	}
+	return C.GoString(buf), nil
 }
 
 func cStringToStringOk(cStr *C.char) (string, bool) {
