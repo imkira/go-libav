@@ -3,6 +3,7 @@ package avutil
 import (
 	"os"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -394,6 +395,79 @@ func TestDictionaryNewSetFreeLeak10M(t *testing.T) {
 		dict.Free()
 	}
 	testMemoryLeak(t, before, 50*1024*1024)
+}
+
+type dictionaryStringTestData struct {
+	contents  map[string]string
+	keyValSep byte
+	pairsSep  byte
+
+	expected string
+	err      string
+}
+
+func TestDictionaryString(t *testing.T) {
+	datas := []*dictionaryStringTestData{
+		&dictionaryStringTestData{
+			contents:  map[string]string{},
+			keyValSep: '=',
+			pairsSep:  ':',
+			expected:  "",
+		},
+		&dictionaryStringTestData{
+			contents: map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			},
+			keyValSep: '=',
+			pairsSep:  ':',
+			expected:  "key1=val1:key2=val2",
+		},
+		&dictionaryStringTestData{
+			contents:  map[string]string{},
+			keyValSep: '\\',
+			pairsSep:  ':',
+			err:       "Invalid argument",
+		},
+	}
+
+	for i, data := range datas {
+		dict := NewDictionary()
+		for k, v := range data.contents {
+			if err := dict.Set(k, v); err != nil {
+				dict.Free()
+				t.Fatal(err)
+			}
+		}
+
+		result, err := dict.String(data.keyValSep, data.pairsSep)
+		if err != nil && err.Error() != data.err {
+			dict.Free()
+			t.Fatalf("[TestDictionaryString - case%d] got err=%s, expected err=%s", i+1, err.Error(), data.err)
+		}
+		if len(result) > 0 {
+			rows := strings.Split(result, string(data.pairsSep))
+			if len(rows) != len(data.contents) {
+				dict.Free()
+				t.Fatalf("[TestDictionaryString - case%d] got result=%s, expected result=%s, ", i+1, result, data.expected)
+			}
+			for _, row := range rows {
+				keyVal := strings.Split(row, string(data.keyValSep))
+				if len(keyVal) != 2 {
+					dict.Free()
+					t.Fatalf("[TestDictionaryString - case%d] got result=%s, expected result=%s, ", i+1, result, data.expected)
+				}
+				if keyVal[1] != data.contents[keyVal[0]] {
+					dict.Free()
+					t.Fatalf("[TestDictionaryString - case%d] got result=%s, expected result=%s, ", i+1, result, data.expected)
+				}
+			}
+		} else if len(data.expected) != 0 {
+			dict.Free()
+			t.Fatalf("[TestDictionaryString - case%d] got result=%s, expected result=%s, ", i+1, result, data.expected)
+		}
+		dict.Free()
+	}
 }
 
 func TestChannelLayouts(t *testing.T) {
