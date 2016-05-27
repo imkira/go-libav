@@ -23,7 +23,7 @@ FIXTURE_TARGETS=$(addprefix fixtures/,$(FIXTURES))
 $(FIXTURE_TARGETS):
 	mkdir -p "$(dir $@)"
 	rm -f "$@.zip" "$@"
-	cd "$(dir $@)" && curl -O "https://support.apple.com/library/APPLE/APPLECARE_ALLGEOS/HT1425/$(notdir $@).zip" && unzip $(notdir $@).zip
+	cd "$(dir $@)" && curl -L "https://bintray.com/imkira/go-libav/download_file?file_path=$(notdir $@)" -o "$(notdir $@)"
 	rm -f "$@.zip"
 
 fixtures: $(FIXTURE_TARGETS)
