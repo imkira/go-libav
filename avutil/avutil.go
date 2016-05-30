@@ -918,6 +918,22 @@ func (f *Frame) SetOpaque(opaque unsafe.Pointer) {
 	f.CAVFrame.opaque = opaque
 }
 
+func (f *Frame) Metadata() *Dictionary {
+	dict := C.av_frame_get_metadata(f.CAVFrame)
+	if dict == nil {
+		return nil
+	}
+	return NewDictionaryFromC(unsafe.Pointer(&dict))
+}
+
+func (f *Frame) SetMetadata(dict *Dictionary) {
+	if dict == nil {
+		C.av_frame_set_metadata(f.CAVFrame, nil)
+		return
+	}
+	C.av_frame_set_metadata(f.CAVFrame, dict.value())
+}
+
 func (f *Frame) BestEffortTimestamp() int64 {
 	return int64(C.av_frame_get_best_effort_timestamp(f.CAVFrame))
 }

@@ -583,6 +583,33 @@ func TestFrameNewFreeLeak10M(t *testing.T) {
 	}
 }
 
+func TestFrameMetadata(t *testing.T) {
+	frame, _ := NewFrame()
+	defer frame.Free()
+
+	result := frame.Metadata()
+	if result != nil {
+		t.Fatalf("[TestFrameMetadata] result=%v, NG expected nil", result)
+	}
+
+	dict := NewDictionary()
+	defer dict.Free()
+	if err := dict.Set("key", "value"); err != nil {
+		t.Fatal(err)
+	}
+	frame.SetMetadata(dict)
+	result = frame.Metadata()
+	if !reflect.DeepEqual(result.Map(), dict.Map()) {
+		t.Fatalf("[TestFrameMetadata] result=%v, NG expected=%v", result, dict)
+	}
+
+	frame.SetMetadata(nil)
+	result = frame.Metadata()
+	if result != nil {
+		t.Fatalf("[TestFrameMetadata] result=%v, NG expected nil", result)
+	}
+}
+
 func TestExprOK(t *testing.T) {
 	expr := testExpr(t)
 	defer expr.Free()
