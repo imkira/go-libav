@@ -746,6 +746,37 @@ func TestString(t *testing.T) {
 	}
 }
 
+func TestParseRational(t *testing.T) {
+	result, err := ParseRational("", 255)
+	if err == nil {
+		t.Fatalf("[TestParseRational] err=nil, NG expected error")
+	}
+
+	result, err = ParseRational("16:9", 20)
+	if err != nil {
+		t.Fatalf("[TestParseRational] err=%v, NG expected not error", err)
+	}
+	if result.Numerator() != 16 || result.Denominator() != 9 {
+		t.Fatalf("[TestParseRational] result=%s, NG expected=%d:%d", result, 16, 9)
+	}
+
+	result, err = ParseRational("1.778", 255)
+	if err != nil {
+		t.Fatalf("[TestParseRational] err=%v, NG expected not error", err)
+	}
+	if result.Numerator() != 16 || result.Denominator() != 9 {
+		t.Fatalf("[TestParseRational] result=%s, NG expected=%d/%d", result, 16, 9)
+	}
+
+	result, err = ParseRational("1.778", 500)
+	if err != nil {
+		t.Fatalf("[TestParseRational] err=%v, NG expected not error", err)
+	}
+	if result.Numerator() != 489 || result.Denominator() != 275 {
+		t.Fatalf("[TestParseRational] result=%s, NG expected=%d/%d", result, 489, 275)
+	}
+}
+
 func testMemoryUsed(t *testing.T) uint64 {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
