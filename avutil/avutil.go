@@ -56,6 +56,7 @@ import "C"
 
 import (
 	"errors"
+	"strconv"
 	"syscall"
 	"time"
 	"unsafe"
@@ -323,6 +324,10 @@ var zeroRational = NewRational(0, 1)
 func NewRationalFromC(cRational unsafe.Pointer) *Rational {
 	rational := (*C.AVRational)(cRational)
 	return NewRational(int(rational.num), int(rational.den))
+}
+
+func (r *Rational) String() string {
+	return strconv.Itoa(r.Numerator()) + ":" + strconv.Itoa(r.Denominator())
 }
 
 func (r *Rational) Numerator() int {
@@ -1352,6 +1357,17 @@ func Rescale(a, b, c int64) int64 {
 
 func RescaleByRationals(a int64, bq, cq *Rational) int64 {
 	return int64(C.av_rescale_q(C.int64_t(a), bq.CAVRational, cq.CAVRational))
+}
+
+func ParseRational(ratio string, max int) (*Rational, error) {
+	cRatio := C.CString(ratio)
+	defer C.free(unsafe.Pointer(cRatio))
+	var cRational C.AVRational
+	code := C.av_parse_ratio(&cRational, cRatio, C.int(max), C.int(0), nil)
+	if code < 0 {
+		return nil, NewErrorFromCode(ErrorCode(code))
+	}
+	return NewRationalFromC(unsafe.Pointer(&cRational)), nil
 }
 
 func ParseTime(timestr string, duration bool) (int64, error) {
