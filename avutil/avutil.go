@@ -652,7 +652,7 @@ func (dict *Dictionary) Copy() *Dictionary {
 
 func (dict *Dictionary) String(keyValSep, pairsSep byte) (string, error) {
 	buf := (*C.char)(nil)
-	defer C.av_free(unsafe.Pointer(buf))
+	defer C.av_freep(unsafe.Pointer(&buf))
 	code := C.av_dict_get_string(dict.value(), &buf, C.char(keyValSep), C.char(pairsSep))
 	if code < 0 {
 		return "", NewErrorFromCode(ErrorCode(code))

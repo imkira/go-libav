@@ -470,6 +470,24 @@ func TestDictionaryString(t *testing.T) {
 	}
 }
 
+func TestDictionaryStringLeak10M(t *testing.T) {
+	dict := NewDictionary()
+	defer dict.Free()
+	if err := dict.Set("key1", "val1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := dict.Set("key2", "val2"); err != nil {
+		t.Fatal(err)
+	}
+	before := testMemoryUsed(t)
+	for i := 0; i < 10000000; i++ {
+		if _, err := dict.String(':', '='); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testMemoryLeak(t, before, 10*1024*1024)
+}
+
 func TestChannelLayouts(t *testing.T) {
 	layouts := ChannelLayouts()
 	if len(layouts) == 0 {
