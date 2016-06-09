@@ -813,3 +813,35 @@ func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
 		t.Fatalf("memory leak detected: %d bytes", after-before)
 	}
 }
+
+func TestFindPixelFormatDescriptorByPixelFormat(t *testing.T) {
+	pixFmt, ok := FindPixelFormatByName("rgb48be")
+	if !ok {
+		t.Fatalf("pixel format not found")
+	}
+	descriptor := FindPixelFormatDescriptorByPixelFormat(pixFmt)
+	if descriptor == nil {
+		t.Fatalf("[TestFindPixelFormatDescriptorByPixelFormat] descriptor is nil, NG expected not nil")
+	}
+
+	descriptor = FindPixelFormatDescriptorByPixelFormat(PixelFormatNone)
+	if descriptor != nil {
+		t.Fatalf("[TestFindPixelFormatDescriptorByPixelFormat] descriptor=%v, NG expected=nil", descriptor)
+	}
+}
+
+func TestPixelFormatDescriptor_ComponentCount(t *testing.T) {
+	pixFmt, ok := FindPixelFormatByName("yuv444p")
+	if !ok {
+		t.Fatalf("pixel format not found")
+	}
+	descriptor := FindPixelFormatDescriptorByPixelFormat(pixFmt)
+	if descriptor == nil {
+		t.Fatalf("pixel format descriptor not found")
+	}
+
+	count := descriptor.ComponentCount()
+	if count != 3 {
+		t.Fatalf("[TestPixelFormatDescriptor_ComponentCount] count=%d, NG expected=%d", count, 3)
+	}
+}
