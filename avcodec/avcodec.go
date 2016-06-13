@@ -139,7 +139,9 @@ var (
 type CodecID C.enum_AVCodecID
 
 const (
-	CodecIDNone CodecID = C.AV_CODEC_ID_NONE
+	CodecIDNone  CodecID = C.AV_CODEC_ID_NONE
+	CodecIDMJpeg CodecID = C.AV_CODEC_ID_MJPEG
+	CodecIDLJpeg CodecID = C.AV_CODEC_ID_LJPEG
 )
 
 type Flags int
@@ -2047,4 +2049,43 @@ func CodecDescriptors() []*CodecDescriptor {
 		descriptors = append(descriptors, NewCodecDescriptorFromC(unsafe.Pointer(prev)))
 	}
 	return descriptors
+}
+
+func FindBestPixelFormat(list []avutil.PixelFormat, src avutil.PixelFormat, alpha bool) avutil.PixelFormat {
+	best := findBestPixelFormatWithLossFlags(list, src, alpha, nil)
+	return best
+}
+
+func FindBestPixelFormatWithLossFlags(list []avutil.PixelFormat, src avutil.PixelFormat, alpha bool, lossFlags avutil.LossFlags) (avutil.PixelFormat, avutil.LossFlags) {
+	best := findBestPixelFormatWithLossFlags(list, src, alpha, &lossFlags)
+	return best, lossFlags
+}
+
+func findBestPixelFormatWithLossFlags(list []avutil.PixelFormat, src avutil.PixelFormat, alpha bool, lossFlags *avutil.LossFlags) avutil.PixelFormat {
+	size := len(list)
+	value := make([]C.enum_AVPixelFormat, size+1, size+1)
+	for i := 0; i < size; i++ {
+		value[i] = C.enum_AVPixelFormat(list[i])
+	}
+	value[size] = C.enum_AVPixelFormat(avutil.PixelFormatNone)
+	cList := (*C.enum_AVPixelFormat)(unsafe.Pointer(&value[0]))
+	cSrc := (C.enum_AVPixelFormat)(src)
+	cAlpha := boolToCInt(alpha)
+	var cLossFlags *C.int
+	if lossFlags != nil {
+		cLossFlagsVal := (C.int)(*lossFlags)
+		cLossFlags = &cLossFlagsVal
+	}
+	best := C.avcodec_find_best_pix_fmt_of_list(cList, cSrc, cAlpha, cLossFlags)
+	if lossFlags != nil {
+		*lossFlags = avutil.LossFlags(*cLossFlags)
+	}
+	return avutil.PixelFormat(best)
+}
+
+func boolToCInt(b bool) C.int {
+	if b {
+		return 1
+	}
+	return 0
 }

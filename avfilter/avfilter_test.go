@@ -1,6 +1,7 @@
 package avfilter
 
 import (
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -76,6 +77,28 @@ func TestGraphNewFreeLeak10M(t *testing.T) {
 		graph.Free()
 	}
 	testMemoryLeak(t, before, 50*1024*1024)
+}
+
+func TestGraphAutoConvert(t *testing.T) {
+	graph := testNewGraph(t)
+	defer graph.Free()
+
+	result := graph.AutoConvertFlags()
+	if result != 0 {
+		t.Fatalf("[TestGraphAutoConvert] result=%d, NG expected=%d", result, 0)
+	}
+
+	graph.SetAutoConvertFlags(GraphAutoConvertFlagNone)
+	result = graph.AutoConvertFlags()
+	if result != math.MaxUint32 {
+		t.Fatalf("[TestGraphAutoConvert] result=%d, NG expected=%d", result, math.MaxUint32)
+	}
+
+	graph.SetAutoConvertFlags(GraphAutoConvertFlagAll)
+	result = graph.AutoConvertFlags()
+	if result != 0 {
+		t.Fatalf("[TestGraphAutoConvert] result=%d, NG expected=%d", result, 0)
+	}
 }
 
 func testFilterByName(t *testing.T, name string) *Filter {

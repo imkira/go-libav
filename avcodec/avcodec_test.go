@@ -322,3 +322,43 @@ func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
 		t.Fatalf("memory leak detected: %d bytes", after-before)
 	}
 }
+
+func TestFindBestPixelFormat(t *testing.T) {
+	list := []avutil.PixelFormat{}
+	src := findPixelFormatByName("rgb48be", t)
+	expectedBest := avutil.PixelFormatNone
+	loss := avutil.LossFlagAlpha
+	best := FindBestPixelFormat(list, src, false)
+	if best != expectedBest {
+		t.Fatalf("[TestFindBestPixelFormat] best=%d, NG expected=%d", best, expectedBest)
+	}
+
+	list = []avutil.PixelFormat{
+		findPixelFormatByName("yuv420p", t),
+		findPixelFormatByName("yuv444p", t),
+		findPixelFormatByName("yuvj420p", t),
+	}
+	expectedBest = findPixelFormatByName("yuv444p", t)
+	best = FindBestPixelFormat(list, src, false)
+	if best != expectedBest {
+		t.Fatalf("[TestFindBestPixelFormat2] best=%d, NG expected=%d", best, expectedBest)
+	}
+
+	expectedBest = findPixelFormatByName("yuv420p", t)
+	expectedLoss := avutil.LossFlagResolution + avutil.LossFlagDepth + avutil.LossFlagColorspace
+	best, retLoss := FindBestPixelFormatWithLossFlags(list, src, false, avutil.LossFlagChroma)
+	if best != expectedBest {
+		t.Fatalf("[TestFindBestPixelFormat3] best=%d, NG expected=%d", best, expectedBest)
+	}
+	if retLoss != expectedLoss {
+		t.Fatalf("[TestFindBestPixelFormat3] loss=%d, NG expected=%d", loss, expectedLoss)
+	}
+}
+
+func findPixelFormatByName(name string, t *testing.T) avutil.PixelFormat {
+	pixFmt, ok := avutil.FindPixelFormatByName(name)
+	if !ok {
+		t.Fatalf("pixel format not found")
+	}
+	return pixFmt
+}

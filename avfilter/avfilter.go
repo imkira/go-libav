@@ -27,6 +27,9 @@ package avfilter
 // int GO_AVFILTER_VERSION_MINOR = LIBAVFILTER_VERSION_MINOR;
 // int GO_AVFILTER_VERSION_MICRO = LIBAVFILTER_VERSION_MICRO;
 //
+//#define GO_AVFILTER_AUTO_CONVERT_ALL ((unsigned)AVFILTER_AUTO_CONVERT_ALL)
+//#define GO_AVFILTER_AUTO_CONVERT_NONE ((unsigned)AVFILTER_AUTO_CONVERT_NONE)
+//
 //#cgo pkg-config: libavfilter libavutil
 import "C"
 
@@ -59,6 +62,13 @@ const (
 	BufferSrcFlagNoCopy        BufferSrcFlags = C.GO_AV_BUFFERSRC_FLAG_NO_COPY
 	BufferSrcFlagPush          BufferSrcFlags = C.AV_BUFFERSRC_FLAG_PUSH
 	BufferSrcFlagKeepRef       BufferSrcFlags = C.AV_BUFFERSRC_FLAG_KEEP_REF
+)
+
+type GraphAutoConvertFlags uint
+
+const (
+	GraphAutoConvertFlagAll  GraphAutoConvertFlags = C.GO_AVFILTER_AUTO_CONVERT_ALL
+	GraphAutoConvertFlagNone GraphAutoConvertFlags = C.GO_AVFILTER_AUTO_CONVERT_NONE
 )
 
 func init() {
@@ -494,6 +504,14 @@ func (g *Graph) DumpWithOptions(options string) (string, error) {
 	}
 	defer C.av_free(unsafe.Pointer(cStr))
 	return C.GoString(cStr), nil
+}
+
+func (g *Graph) AutoConvertFlags() GraphAutoConvertFlags {
+	return GraphAutoConvertFlags(g.CAVFilterGraph.disable_auto_convert)
+}
+
+func (g *Graph) SetAutoConvertFlags(flags GraphAutoConvertFlags) {
+	C.avfilter_graph_set_auto_convert(g.CAVFilterGraph, (C.uint)(flags))
 }
 
 type InOut struct {

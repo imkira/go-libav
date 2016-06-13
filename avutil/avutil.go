@@ -156,6 +156,19 @@ const (
 	OptionSearchFakeObj  OptionSearchFlags = C.AV_OPT_SEARCH_FAKE_OBJ
 )
 
+type LossFlags int
+
+const (
+	LossFlagNone       LossFlags = 0
+	LossFlagResolution LossFlags = C.FF_LOSS_RESOLUTION
+	LossFlagDepth      LossFlags = C.FF_LOSS_DEPTH
+	LossFlagColorspace LossFlags = C.FF_LOSS_COLORSPACE
+	LossFlagAlpha      LossFlags = C.FF_LOSS_ALPHA
+	LossFlagColorquant LossFlags = C.FF_LOSS_COLORQUANT
+	LossFlagChroma     LossFlags = C.FF_LOSS_CHROMA
+	LossFlagAll        LossFlags = -1
+)
+
 func init() {
 	SetLogLevel(LogLevelQuiet)
 }
@@ -220,6 +233,26 @@ func (pfmt PixelFormat) Name() string {
 
 func (pfmt PixelFormat) NameOk() (string, bool) {
 	return cStringToStringOk(C.av_get_pix_fmt_name((C.enum_AVPixelFormat)(pfmt)))
+}
+
+type PixelFormatDescriptor struct {
+	CAVPixFmtDescriptor *C.AVPixFmtDescriptor
+}
+
+func NewPixelFormatDescriptorFromC(cCtx unsafe.Pointer) *PixelFormatDescriptor {
+	return &PixelFormatDescriptor{CAVPixFmtDescriptor: (*C.AVPixFmtDescriptor)(cCtx)}
+}
+
+func FindPixelFormatDescriptorByPixelFormat(pixelFormat PixelFormat) *PixelFormatDescriptor {
+	cDescriptor := C.av_pix_fmt_desc_get(C.enum_AVPixelFormat(pixelFormat))
+	if cDescriptor == nil {
+		return nil
+	}
+	return NewPixelFormatDescriptorFromC(unsafe.Pointer(cDescriptor))
+}
+
+func (d *PixelFormatDescriptor) ComponentCount() int {
+	return int(d.CAVPixFmtDescriptor.nb_components)
 }
 
 type ChannelLayout uint64
