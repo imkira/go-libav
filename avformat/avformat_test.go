@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/imkira/go-libav/avcodec"
 	"github.com/imkira/go-libav/avutil"
 	"github.com/shirou/gopsutil/process"
 )
@@ -340,6 +341,85 @@ func TestStreamFirstDTSOK(t *testing.T) {
 	if result != expected {
 		t.Fatalf("[TestStreamFirstDTSOK] result = %d, NG, expected = %d", result, expected)
 	}
+}
+
+func TestStreamEndPTSDefaultOK(t *testing.T) {
+	ctx, _ := NewContextForOutput(GuessOutputFromFileName("test.mp4"))
+	defer ctx.Free()
+	stream, err := ctx.NewStream()
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := stream.EndPTS()
+	expected := avutil.NoPTSValue
+	if result != expected {
+		t.Fatalf("[TestStreamEndPTSDefaultOK] result = %d, NG, expected = %d", result, expected)
+	}
+}
+
+func TestStreamEndPTSOK(t *testing.T) {
+	iCtx := testOpenInput(t)
+	defer iCtx.Free()
+	oCtx, oStream := testCopy(t, iCtx)
+	defer oCtx.Free()
+	pkt := testWritePacket(t, iCtx, oCtx)
+	defer pkt.Free()
+	result := oStream.EndPTS()
+	expected := int64(1024)
+	if result != expected {
+		t.Fatalf("[TestStreamEndPTSOK] result = %d, NG, expected = %d", result, expected)
+	}
+}
+
+func testOpenInput(t *testing.T) *Context {
+	ctx, _ := NewContextForInput()
+	if err := ctx.OpenInput(fixturePath("sample_mpeg4.mp4"), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := ctx.FindStreamInfo(nil); err != nil {
+		t.Fatal(err)
+	}
+	return ctx
+}
+
+func testCopy(t *testing.T, iCtx *Context) (*Context, *Stream) {
+	ctx, _ := NewContextForOutput(GuessOutputFromFileName("test.mp4"))
+	iCodecCtx := iCtx.Streams()[0].CodecContext()
+	stream, err := ctx.NewStreamWithCodec(iCodecCtx.Codec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := iCodecCtx.CopyTo(stream.CodecContext()); err != nil {
+		t.Fatal(err)
+	}
+	stream.CodecContext().SetCodecTag(0)
+	ioCtx, err := OpenIOContext(os.DevNull, IOFlagWrite, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx.SetIOContext(ioCtx)
+	ctx.WriteHeader(nil)
+	return ctx, stream
+}
+
+func testWritePacket(t *testing.T, iCtx *Context, oCtx *Context) *avcodec.Packet {
+	pkt := testNewPacket(t)
+	iCtx.ReadFrame(pkt)
+	if err := oCtx.InterleavedWriteFrame(pkt); err != nil {
+		t.Fatal(err)
+	}
+	return pkt
+}
+
+func testNewPacket(t *testing.T) *avcodec.Packet {
+	pkt, err := avcodec.NewPacket()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pkt == nil {
+		t.Fatalf("Expecting packet")
+	}
+	return pkt
 }
 
 func TestGuessFrameRate(t *testing.T) {
