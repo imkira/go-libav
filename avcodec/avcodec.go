@@ -131,9 +131,10 @@ import (
 )
 
 var (
-	ErrAllocationError = errors.New("allocation error")
-	ErrEncoderNotFound = errors.New("encoder not found")
-	ErrDecoderNotFound = errors.New("decoder not found")
+	ErrAllocationError         = errors.New("allocation error")
+	ErrEncoderNotFound         = errors.New("encoder not found")
+	ErrDecoderNotFound         = errors.New("decoder not found")
+	ErrBitStreamFilterNotFound = errors.New("bitstreamfilter not found")
 )
 
 type CodecID C.enum_AVCodecID
@@ -393,6 +394,14 @@ func (pkt *Packet) RescaleTime(srcTimeBase, dstTimeBase *avutil.Rational) {
 	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
 	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
 	C.av_packet_rescale_ts(pkt.CAVPacket, *src, *dst)
+}
+
+func (pkt *Packet) SplitSideData() error {
+	code := C.av_packet_split_side_data(pkt.CAVPacket)
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
 }
 
 func (pkt *Packet) PTS() int64 {
@@ -2049,6 +2058,71 @@ func CodecDescriptors() []*CodecDescriptor {
 		descriptors = append(descriptors, NewCodecDescriptorFromC(unsafe.Pointer(prev)))
 	}
 	return descriptors
+}
+
+type BitStreamFilterContext struct {
+	CAVBitStreamFilterContext *C.AVBitStreamFilterContext
+}
+
+func NewBitStreamFilterContextFromC(cCtx unsafe.Pointer) *BitStreamFilterContext {
+	return &BitStreamFilterContext{CAVBitStreamFilterContext: (*C.AVBitStreamFilterContext)(cCtx)}
+}
+
+func NewBitStreamFilterContextFromName(name string) (*BitStreamFilterContext, error) {
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	cCtx := C.av_bitstream_filter_init(cName)
+	if cCtx == nil {
+		return nil, ErrBitStreamFilterNotFound
+	}
+	return NewBitStreamFilterContextFromC(unsafe.Pointer(cCtx)), nil
+}
+
+func (ctx *BitStreamFilterContext) Close() {
+	if ctx.CAVBitStreamFilterContext != nil {
+		C.av_bitstream_filter_close(ctx.CAVBitStreamFilterContext)
+		ctx.CAVBitStreamFilterContext = nil
+	}
+}
+
+func (ctx *BitStreamFilterContext) Next() *BitStreamFilterContext {
+	next := ctx.CAVBitStreamFilterContext.next
+	if next == nil {
+		return nil
+	}
+	return NewBitStreamFilterContextFromC(unsafe.Pointer(next))
+}
+
+func (ctx *BitStreamFilterContext) SetNext(next *BitStreamFilterContext) {
+	ctx.CAVBitStreamFilterContext.next = next.CAVBitStreamFilterContext
+}
+
+func (ctx *BitStreamFilterContext) Args() string {
+	args, _ := ctx.ArgsOK()
+	return args
+}
+
+func (ctx *BitStreamFilterContext) ArgsOK() (string, bool) {
+	return cStringToStringOk(ctx.CAVBitStreamFilterContext.args)
+}
+
+func (ctx *BitStreamFilterContext) SetArgs(args *string) error {
+	C.av_freep(unsafe.Pointer(&ctx.CAVBitStreamFilterContext.args))
+	if args == nil {
+		return nil
+	}
+	bArgs := []byte(*args)
+	length := len(bArgs)
+	cArgs := (*C.char)(C.av_malloc(C.size_t(length + 1)))
+	if cArgs == nil {
+		return ErrAllocationError
+	}
+	if length > 0 {
+		C.memcpy(unsafe.Pointer(cArgs), unsafe.Pointer(&bArgs[0]), C.size_t(length))
+	}
+	C.memset(unsafe.Pointer(uintptr(unsafe.Pointer(cArgs))+uintptr(length)), 0, 1)
+	ctx.CAVBitStreamFilterContext.args = cArgs
+	return nil
 }
 
 func FindBestPixelFormat(list []avutil.PixelFormat, src avutil.PixelFormat, alpha bool) avutil.PixelFormat {
