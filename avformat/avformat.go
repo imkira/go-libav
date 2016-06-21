@@ -536,6 +536,10 @@ func (s *Stream) FirstDTS() int64 {
 	return int64(s.CAVStream.first_dts)
 }
 
+func (s *Stream) EndPTS() int64 {
+	return int64(C.av_stream_get_end_pts(s.CAVStream))
+}
+
 type Context struct {
 	CAVFormatContext *C.AVFormatContext
 }
