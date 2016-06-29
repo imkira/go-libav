@@ -533,6 +533,56 @@ func TestContextSetMetaData(t *testing.T) {
 	}
 }
 
+func TestContext_IOOpenCallback(t *testing.T) {
+	ctx, err := NewContextForInput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.Free()
+	cb := ctx.IOOpenCallback()
+	if cb == nil {
+		t.Fatalf("[TestContext_IOOpenCallback] callback is nil NG, expected not nil")
+	}
+	ctx.SetIOOpenCallback(nil)
+	nilCB := ctx.IOOpenCallback()
+	if nilCB != nil {
+		t.Fatalf("[TestContext_IOOpenCallback] callback is %p NG, expected is nil", nilCB)
+	}
+	ctx.SetIOOpenCallback(cb)
+	resetCB := ctx.IOOpenCallback()
+	if resetCB == nil {
+		t.Fatalf("[TestContext_IOOpenCallback] callback is nil NG, expected not nil")
+	}
+	if cb != resetCB {
+		t.Fatalf("[TestContext_IOOpenCallback] callback1 is %p, callback2 is %p NG, expected same", cb, resetCB)
+	}
+}
+
+func TestContext_IOCloseCallback(t *testing.T) {
+	ctx, err := NewContextForInput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.Free()
+	cb := ctx.IOCloseCallback()
+	if cb == nil {
+		t.Fatalf("[TestContext_IOCloseCallback] callback is nil NG, expected not nil")
+	}
+	ctx.SetIOCloseCallback(nil)
+	nilCB := ctx.IOCloseCallback()
+	if nilCB != nil {
+		t.Fatalf("[TestContext_IOCloseCallback] callback is %p NG, expected is nil", nilCB)
+	}
+	ctx.SetIOCloseCallback(cb)
+	resetCB := ctx.IOCloseCallback()
+	if resetCB == nil {
+		t.Fatalf("[TestContext_IOCloseCallback] callback is nil NG, expected not nil")
+	}
+	if cb != resetCB {
+		t.Fatalf("[TestContext_IOCloseCallback] callback1 is %p, callback2 is %p NG, expected same", cb, resetCB)
+	}
+}
+
 func TestContextNewFreeLeak1M(t *testing.T) {
 	before := testMemoryUsed(t)
 	for i := 0; i < 1000000; i++ {

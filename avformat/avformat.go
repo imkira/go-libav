@@ -33,6 +33,9 @@ package avformat
 // int GO_AVFORMAT_VERSION_MINOR = LIBAVFORMAT_VERSION_MINOR;
 // int GO_AVFORMAT_VERSION_MICRO = LIBAVFORMAT_VERSION_MICRO;
 //
+//typedef int (*AVFormatContextIOOpenCallback)(struct AVFormatContext *s, AVIOContext **pb, const char *url, int flags, AVDictionary **options);
+//typedef void (*AVFormatContextIOCloseCallback)(struct AVFormatContext *s, AVIOContext *pb);
+//
 // #cgo pkg-config: libavformat libavutil
 import "C"
 
@@ -770,6 +773,22 @@ func (ctx *Context) SetMetaData(metaData *avutil.Dictionary) {
 
 func (ctx *Context) DataCodecID() avcodec.CodecID {
 	return (avcodec.CodecID)(ctx.CAVFormatContext.data_codec_id)
+}
+
+func (ctx *Context) IOOpenCallback() unsafe.Pointer {
+	return unsafe.Pointer(ctx.CAVFormatContext.io_open)
+}
+
+func (ctx *Context) SetIOOpenCallback(callback unsafe.Pointer) {
+	ctx.CAVFormatContext.io_open = (C.AVFormatContextIOOpenCallback)(callback)
+}
+
+func (ctx *Context) IOCloseCallback() unsafe.Pointer {
+	return unsafe.Pointer(ctx.CAVFormatContext.io_close)
+}
+
+func (ctx *Context) SetIOCloseCallback(callback unsafe.Pointer) {
+	ctx.CAVFormatContext.io_close = (C.AVFormatContextIOCloseCallback)(callback)
 }
 
 func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dictionary) error {
