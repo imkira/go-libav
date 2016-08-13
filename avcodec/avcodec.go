@@ -688,7 +688,11 @@ type Context struct {
 }
 
 func NewContextWithCodec(codec *Codec) (*Context, error) {
-	cCtx := C.avcodec_alloc_context3(codec.CAVCodec)
+	var cCodec *C.AVCodec
+	if codec != nil {
+		cCodec = codec.CAVCodec
+	}
+	cCtx := C.avcodec_alloc_context3(cCodec)
 	if cCtx == nil {
 		return nil, ErrAllocationError
 	}
