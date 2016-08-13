@@ -304,6 +304,16 @@ func testNewContextWithCodec(t *testing.T, name string) *Context {
 	return ctx
 }
 
+func TestNewContextWithCodecNil(t *testing.T) {
+	ctx, err := NewContextWithCodec(nil)
+	if err != nil {
+		t.Fatalf("Expecting allocate")
+	}
+	if ctx == nil {
+		t.Fatalf("Expecting context")
+	}
+}
+
 func testMemoryUsed(t *testing.T) uint64 {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
