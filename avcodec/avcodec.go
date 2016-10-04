@@ -2033,6 +2033,19 @@ func (c *CodecDescriptor) MimeTypes() []string {
 	return mimeTypes
 }
 
+func (c *CodecDescriptor) Profiles() []*Profile {
+	var profiles []*Profile
+	for i := 0; ; i++ {
+		cProfile := C.go_av_profile_get(c.CAVCodecDescriptor.profiles, C.int(i))
+		if cProfile == nil || int(cProfile.profile) == ProfileUnknown {
+			break
+		}
+		profile := NewProfileFromC(unsafe.Pointer(cProfile))
+		profiles = append(profiles, profile)
+	}
+	return profiles
+}
+
 func CodecDescriptorByID(codecID CodecID) *CodecDescriptor {
 	cCodecDescriptor := C.avcodec_descriptor_get((C.enum_AVCodecID)(codecID))
 	if cCodecDescriptor == nil {
