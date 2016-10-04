@@ -274,16 +274,17 @@ func (pd *ProbeData) SetFileName(fileName *string) error {
 func (pd *ProbeData) SetBuffer(buffer []byte) error {
 	pd.CAVProbeData.buf_size = 0
 	C.av_freep(unsafe.Pointer(&pd.CAVProbeData.buf))
-	if len(buffer) == 0 {
-		return nil
-	}
 	size := C.size_t(len(buffer))
 	extraSize := C.size_t(C.AVPROBE_PADDING_SIZE)
-	buf := (*C.uchar)(C.av_memdup(unsafe.Pointer(&buffer[0]), size+extraSize))
+	buf := C.av_malloc(size + extraSize)
 	if buf == nil {
 		return ErrAllocationError
 	}
-	pd.CAVProbeData.buf = buf
+	if size != 0 {
+		C.memcpy(buf, unsafe.Pointer(&buffer[0]), size)
+	}
+	C.memset(unsafe.Pointer(uintptr(buf)+uintptr(size)), 0, extraSize)
+	pd.CAVProbeData.buf = (*C.uchar)(buf)
 	pd.CAVProbeData.buf_size = C.int(size)
 	return nil
 }

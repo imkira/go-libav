@@ -2,11 +2,14 @@ package avformat
 
 import (
 	"bytes"
+	"crypto/rand"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"unsafe"
 
 	"github.com/imkira/go-libav/avcodec"
 	"github.com/imkira/go-libav/avutil"
@@ -66,6 +69,43 @@ func TestInputFlags(t *testing.T) {
 	result := ctx.Input().Flags()
 	if result != FlagNoByteSeek {
 		t.Fatalf("[TestFlags] result = %v, NG, expected = %v", result, FlagNoByteSeek)
+	}
+}
+
+func TestProbeDataSetBuffer(t *testing.T) {
+	pd := NewProbeData()
+	defer pd.Free()
+	maxSize := 1024 * 1024 * 16
+	for size := 0; size < maxSize; size = int(math.Max(1, float64(size)*2)) {
+		b := make([]byte, size)
+		_, err := rand.Read(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := pd.SetBuffer(b); err != nil {
+			t.Fatal(err)
+		}
+		if pd.CAVProbeData.buf == nil {
+			t.Fatalf("Expecting buf")
+		}
+		if got := int(pd.CAVProbeData.buf_size); got != size {
+			t.Fatalf("Expecting size=%d got %d", size, got)
+		}
+		for i := 0; i < size; i++ {
+			ptr := unsafe.Pointer(uintptr(unsafe.Pointer(pd.CAVProbeData.buf)) + uintptr(i))
+			c := *(*byte)(ptr)
+			if c != b[i] {
+				t.Fatalf("Invalid byte at offset=%d size=%d", i, size)
+			}
+		}
+		probePaddingSize := 32
+		for i := size; i < size+probePaddingSize; i++ {
+			ptr := unsafe.Pointer(uintptr(unsafe.Pointer(pd.CAVProbeData.buf)) + uintptr(i))
+			c := *(*byte)(ptr)
+			if c != 0 {
+				t.Fatalf("Invalid byte at offset=%d size=%d", i, size)
+			}
+		}
 	}
 }
 
