@@ -948,3 +948,26 @@ func ApplyBitstreamFilters(codecCtx *avcodec.Context, pkt *avcodec.Packet, filte
 	}
 	return nil
 }
+
+func NumberedSequenceFormat(format string) bool {
+	cFormat := C.CString(format)
+	defer C.free(unsafe.Pointer(cFormat))
+	valid := C.av_filename_number_test(cFormat)
+	if valid == 1 {
+		return true
+	}
+	return false
+}
+
+func FormatNumberedSequence(format string, num int) (string, error) {
+	cFormat := C.CString(format)
+	defer C.free(unsafe.Pointer(cFormat))
+	size := C.size_t(1024)
+	buf := (*C.char)(C.av_mallocz(size))
+	defer C.av_free(unsafe.Pointer(buf))
+	code := C.av_get_frame_filename(buf, C.int(size-1), cFormat, C.int(num))
+	if code < 0 {
+		return "", avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return C.GoString(buf), nil
+}

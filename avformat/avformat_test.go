@@ -652,6 +652,64 @@ func TestIOContextOpenCloseLeak100K(t *testing.T) {
 	}
 }
 
+func TestNumberedSequenceFormat(t *testing.T) {
+	result := NumberedSequenceFormat("test_%d")
+	if !result {
+		t.Fatalf("result is %t, expected %t", result, true)
+	}
+	result = NumberedSequenceFormat("test_%04d")
+	if !result {
+		t.Fatalf("result is %t, expected %t", result, true)
+	}
+	result = NumberedSequenceFormat("test_%s")
+	if result {
+		t.Fatalf("result is %t, expected %t", result, false)
+	}
+	result = NumberedSequenceFormat("test")
+	if result {
+		t.Fatalf("result is %t, expected %t", result, false)
+	}
+}
+
+func TestFormatNumberedSequence(t *testing.T) {
+	expected := "test_1"
+	result, err := FormatNumberedSequence("test_%d", 1)
+	if err != nil {
+		t.Fatalf("err is %v, expected not err", err)
+	}
+	if result != expected {
+		t.Fatalf("result is %s, expected %s", result, expected)
+	}
+
+	expected = "test_0001"
+	result, err = FormatNumberedSequence("test_%04d", 1)
+	if err != nil {
+		t.Fatalf("err is %v, expected not err", err)
+	}
+	if result != expected {
+		t.Fatalf("result is %s, expected %s", result, expected)
+	}
+
+	expected = "test_-0001"
+	result, err = FormatNumberedSequence("test_%04d", -1)
+	if err != nil {
+		t.Fatalf("err is %v, expected not err", err)
+	}
+	if result != expected {
+		t.Fatalf("result is %s, expected %s", result, expected)
+	}
+
+	_, err = FormatNumberedSequence("test_%s", 1)
+	if err == nil {
+		t.Fatal("err is nil, expected returned err")
+	}
+
+	_, err = FormatNumberedSequence("test", 1)
+	if err == nil {
+		t.Fatal("err is nil, expected returned err")
+	}
+}
+
 func testMemoryUsed(t *testing.T) uint64 {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
