@@ -174,6 +174,53 @@ func testOutputFormatMatroska(t *testing.T, f *Output) {
 	}
 }
 
+func TestOutput_GuessCodecID(t *testing.T) {
+	type testData struct {
+		filename      string
+		expectedVideo string
+		expectedAudio string
+	}
+	datas := []*testData{
+		&testData{
+			filename:      "test.mp4",
+			expectedVideo: "libx264",
+			expectedAudio: "aac",
+		},
+		&testData{
+			filename:      "test.png",
+			expectedVideo: "png",
+			expectedAudio: "none",
+		},
+	}
+
+	for i, data := range datas {
+		fmt := GuessOutputFromFileName(data.filename)
+		codecID := fmt.GuessCodecID(data.filename, avutil.MediaTypeVideo)
+		if codecID == avcodec.CodecIDNone {
+			if data.expectedVideo != "none" {
+				t.Fatalf("[case %d] expected %v, got any(ID=%v)", i+1, data.expectedVideo, codecID)
+			}
+		} else {
+			codec := avcodec.FindEncoderByID(codecID)
+			if codec.Name() != data.expectedVideo {
+				t.Fatalf("[case %d] expected %v, got %v", i+1, data.expectedVideo, codec.Name())
+			}
+		}
+
+		codecID = fmt.GuessCodecID(data.filename, avutil.MediaTypeAudio)
+		if codecID == avcodec.CodecIDNone {
+			if data.expectedAudio != "none" {
+				t.Fatalf("[case %d] expected %v, got any(ID=%v)", i+1, data.expectedAudio, codecID)
+			}
+		} else {
+			codec := avcodec.FindEncoderByID(codecID)
+			if codec.Name() != data.expectedAudio {
+				t.Fatalf("[case %d] expected %v, got %v", i+1, data.expectedAudio, codec.Name())
+			}
+		}
+	}
+}
+
 func TestGuessOutputFromShortName(t *testing.T) {
 	shortNames := []string{
 		"matroska",
