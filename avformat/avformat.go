@@ -408,6 +408,12 @@ func (f *Output) DataCodecID() avcodec.CodecID {
 	return (avcodec.CodecID)(f.CAVOutputFormat.data_codec)
 }
 
+func (f *Output) GuessCodecID(filename string, mediaType avutil.MediaType) avcodec.CodecID {
+	cFilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cFilename))
+	return (avcodec.CodecID)(C.av_guess_codec(f.CAVOutputFormat, nil, cFilename, nil, C.enum_AVMediaType(mediaType)))
+}
+
 func GuessOutputFromShortName(shortName string) *Output {
 	cShortName := C.CString(shortName)
 	defer C.free(unsafe.Pointer(cShortName))
