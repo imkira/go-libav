@@ -9,6 +9,7 @@ package avutil
 //#include <libavutil/parseutils.h>
 //#include <libavutil/common.h>
 //#include <libavutil/eval.h>
+//#include <libavutil/motion_vector.h>
 //
 //#ifdef AV_LOG_TRACE
 //#define GO_AV_LOG_TRACE AV_LOG_TRACE
@@ -40,6 +41,16 @@ package avutil
 //    return 1;
 //  }
 //  return 0;
+//}
+//
+//static const AVMotionVector *go_motion_vector(const AVFrameSideData *sd, int num) {
+//	const AVMotionVector *mvs = (const AVMotionVector *)sd->data;
+//	return &mvs[num];
+//}
+//
+//static int go_motion_vector_size(const AVFrameSideData *sd) {
+//	const AVMotionVector *mvs = (const AVMotionVector*)sd->data;
+//	return sd->size / sizeof(*mvs);
 //}
 //
 //static const int go_av_errno_to_error(int e)
@@ -103,6 +114,24 @@ const (
 	PictureTypeSI   PictureType = C.AV_PICTURE_TYPE_SI
 	PictureTypeSP   PictureType = C.AV_PICTURE_TYPE_SP
 	PictureTypeBI   PictureType = C.AV_PICTURE_TYPE_BI
+)
+
+type FrameSideDataType C.enum_AVFrameSideDataType
+
+const (
+	FrameDataPanScan                  FrameSideDataType = C.AV_FRAME_DATA_PANSCAN
+	FrameDataA53CC                    FrameSideDataType = C.AV_FRAME_DATA_A53_CC
+	FrameDataStereo3D                 FrameSideDataType = C.AV_FRAME_DATA_STEREO3D
+	FrameDataMatrixEncoding           FrameSideDataType = C.AV_FRAME_DATA_MATRIXENCODING
+	FrameDataDownMixInfo              FrameSideDataType = C.AV_FRAME_DATA_DOWNMIX_INFO
+	FrameDataReplayGain               FrameSideDataType = C.AV_FRAME_DATA_REPLAYGAIN
+	FrameDataDisplayMatrix            FrameSideDataType = C.AV_FRAME_DATA_DISPLAYMATRIX
+	FrameDataAFD                      FrameSideDataType = C.AV_FRAME_DATA_AFD
+	FrameDataMotionVectors            FrameSideDataType = C.AV_FRAME_DATA_MOTION_VECTORS
+	FrameDataSkipSamples              FrameSideDataType = C.AV_FRAME_DATA_SKIP_SAMPLES
+	FrameDataAudioServiceType         FrameSideDataType = C.AV_FRAME_DATA_AUDIO_SERVICE_TYPE
+	FrameDataMasteringDisplayMetadata FrameSideDataType = C.AV_FRAME_DATA_MASTERING_DISPLAY_METADATA
+	FrameDataGopTimecode              FrameSideDataType = C.AV_FRAME_DATA_GOP_TIMECODE
 )
 
 type ChromaLocation C.enum_AVChromaLocation
@@ -978,6 +1007,110 @@ func (f *Frame) BestEffortTimestamp() int64 {
 
 func (f *Frame) PacketDuration() int64 {
 	return int64(C.av_frame_get_pkt_duration(f.CAVFrame))
+}
+
+func (f *Frame) SideData(dataType FrameSideDataType) *FrameSideData {
+	cSideData := C.av_frame_get_side_data(f.CAVFrame, (C.enum_AVFrameSideDataType)(dataType))
+	if cSideData == nil {
+		return nil
+	}
+
+	return NewFrameSideDataFromC(unsafe.Pointer(cSideData))
+}
+
+type FrameSideData struct {
+	CFrameSideData *C.AVFrameSideData
+}
+
+func NewFrameSideDataFromC(cFrameSideData unsafe.Pointer) *FrameSideData {
+	return &FrameSideData{
+		CFrameSideData: (*C.AVFrameSideData)(cFrameSideData),
+	}
+}
+
+func (sd *FrameSideData) Size() int {
+	return int(sd.CFrameSideData.size)
+}
+
+func (sd *FrameSideData) Type() FrameSideDataType {
+	return FrameSideDataType(sd.CFrameSideData._type)
+}
+
+func (sd *FrameSideData) MotionVector(n int) *MotionVector {
+	mv := C.go_motion_vector(sd.CFrameSideData, C.int(n))
+	return NewMotionVectorFromC(unsafe.Pointer(&mv))
+}
+
+func (sd *FrameSideData) Metadata() *Dictionary {
+	if sd.CFrameSideData.metadata == nil {
+		return nil
+	}
+
+	return NewDictionaryFromC(unsafe.Pointer(&sd.CFrameSideData.metadata))
+}
+
+func (sd *FrameSideData) Free() {
+	if sd == nil {
+		return
+	}
+
+	C.av_buffer_unref(unsafe.Pointer(&sd.CFrameSideData.buf))
+	sd.Metadata().Free()
+	C.av_freep(unsafe.Pointer(sd.CFrameSideData))
+}
+
+type MotionVector struct {
+	CMotionVector *C.AVMotionVector
+}
+
+func NewMotionVectorFromC(mv unsafe.Pointer) *MotionVector {
+	return &MotionVector{
+		CMotionVector: (*C.AVMotionVector)(mv),
+	}
+}
+
+func (mv *MotionVector) Source() int32 {
+	return int32(mv.CMotionVector.source)
+}
+
+func (mv *MotionVector) Width() uint8 {
+	return uint8(mv.CMotionVector.w)
+}
+
+func (mv *MotionVector) Height() uint8 {
+	return uint8(mv.CMotionVector.h)
+}
+
+func (mv *MotionVector) SrcX() int16 {
+	return int16(mv.CMotionVector.src_x)
+}
+
+func (mv *MotionVector) SrcY() int16 {
+	return int16(mv.CMotionVector.src_y)
+}
+
+func (mv *MotionVector) DstX() int16 {
+	return int16(mv.CMotionVector.dst_x)
+}
+
+func (mv *MotionVector) DstY() int16 {
+	return int16(mv.CMotionVector.dst_y)
+}
+
+func (mv *MotionVector) Flags() uint64 {
+	return uint64(mv.CMotionVector.flags)
+}
+
+func (mv *MotionVector) MotionX() int32 {
+	return int32(mv.CMotionVector.motion_x)
+}
+
+func (mv *MotionVector) MotionY() int32 {
+	return int32(mv.CMotionVector.motion_y)
+}
+
+func (mv *MotionVector) MotionScale() uint16 {
+	return uint16(mv.CMotionVector.motion_scale)
 }
 
 type OptionAccessor struct {
