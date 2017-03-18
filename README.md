@@ -48,7 +48,7 @@ For advanced usage, make sure to check the following documentation:
 
 # Examples
 
-Coming soon.
+Please check [here for examples](https://github.com/imkira/go-libav/tree/master/examples).
 
 # Contribute
 
