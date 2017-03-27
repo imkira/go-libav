@@ -845,3 +845,13 @@ func TestPixelFormatDescriptor_ComponentCount(t *testing.T) {
 		t.Fatalf("[TestPixelFormatDescriptor_ComponentCount] count=%d, NG expected=%d", count, 3)
 	}
 }
+
+func TestMotionVectorFromFrameSideData(t *testing.T) {
+	frame, _ := NewFrame()
+	defer frame.Free()
+
+	sideData := frame.SideData(FrameDataMotionVectors)
+	if sideData != nil {
+		t.Fatalf("[TestMotionVectorFromFrameSideData] sidedata=%v, NG expected=nil", sideData)
+	}
+}
