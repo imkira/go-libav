@@ -892,6 +892,10 @@ func NewIOContextFromC(cCtx unsafe.Pointer) *IOContext {
 	return &IOContext{CAVIOContext: (*C.AVIOContext)(cCtx)}
 }
 
+func (ctx *IOContext) Size() int64 {
+	return int64(C.avio_size(ctx.CAVIOContext))
+}
+
 func (ctx *IOContext) Close() error {
 	if ctx.CAVIOContext != nil {
 		code := C.avio_closep(&ctx.CAVIOContext)
