@@ -44,6 +44,11 @@ package avutil
 //  return 0;
 //}
 //
+//static int go_av_expr_parse2(AVExpr **expr, const char *s, const char * const *const_names, int log_offset, void *log_ctx)
+//{
+//  return av_expr_parse(expr, s, const_names, NULL, NULL, NULL, NULL, log_offset, log_ctx);
+//}
+//
 //static const int go_av_errno_to_error(int e)
 //{
 //  return AVERROR(e);
@@ -1319,7 +1324,7 @@ func NewExpr(value string, constNames []string) (*Expr, error) {
 		cConstNames[i] = C.CString(constName)
 		defer C.free(unsafe.Pointer(cConstNames[i]))
 	}
-	code := C.av_expr_parse(&e.CAVExpr, cValue, (**C.char)(&cConstNames[0]), nil, nil, nil, nil, 0, nil)
+	code := C.go_av_expr_parse2(&e.CAVExpr, cValue, (**C.char)(&cConstNames[0]), 0, nil)
 	if code < 0 {
 		return nil, NewErrorFromCode(ErrorCode(code))
 	}
