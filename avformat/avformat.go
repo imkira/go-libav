@@ -944,17 +944,6 @@ func freeCAVDictionaryArray(arr **C.AVDictionary) {
 	C.av_free(unsafe.Pointer(arr))
 }
 
-func ApplyBitstreamFilters(codecCtx *avcodec.Context, pkt *avcodec.Packet, filtersCtx *avcodec.BitStreamFilterContext) error {
-	cCodecCtx := (*C.AVCodecContext)(unsafe.Pointer(codecCtx.CAVCodecContext))
-	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	cFilters := (*C.AVBitStreamFilterContext)(unsafe.Pointer(filtersCtx.CAVBitStreamFilterContext))
-	code := C.av_apply_bitstream_filters(cCodecCtx, cPkt, cFilters)
-	if code < 0 {
-		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
-	}
-	return nil
-}
-
 func NumberedSequenceFormat(format string) bool {
 	cFormat := C.CString(format)
 	defer C.free(unsafe.Pointer(cFormat))
