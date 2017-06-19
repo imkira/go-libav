@@ -1,5 +1,7 @@
 package avutil
 
+//go:generate go run hackgenerator.go
+
 //#include <libavutil/avutil.h>
 //#include <libavutil/channel_layout.h>
 //#include <libavutil/dict.h>
@@ -42,14 +44,15 @@ package avutil
 //  return 0;
 //}
 //
+//static int go_av_expr_parse2(AVExpr **expr, const char *s, const char * const *const_names, int log_offset, void *log_ctx)
+//{
+//  return av_expr_parse(expr, s, const_names, NULL, NULL, NULL, NULL, log_offset, log_ctx);
+//}
+//
 //static const int go_av_errno_to_error(int e)
 //{
 //  return AVERROR(e);
 //}
-//
-// int GO_AVUTIL_VERSION_MAJOR = LIBAVUTIL_VERSION_MAJOR;
-// int GO_AVUTIL_VERSION_MINOR = LIBAVUTIL_VERSION_MINOR;
-// int GO_AVUTIL_VERSION_MICRO = LIBAVUTIL_VERSION_MICRO;
 //
 // #cgo pkg-config: libavutil
 import "C"
@@ -119,36 +122,6 @@ const (
 
 type ErrorCode int
 
-const (
-	ErrorCodeBSFNotFound      ErrorCode = C.AVERROR_BSF_NOT_FOUND
-	ErrorCodeBug              ErrorCode = C.AVERROR_BUG
-	ErrorCodeBufferTooSmall   ErrorCode = C.AVERROR_BUFFER_TOO_SMALL
-	ErrorCodeDecoderNotFound  ErrorCode = C.AVERROR_DECODER_NOT_FOUND
-	ErrorCodeDemuxerNotFound  ErrorCode = C.AVERROR_DEMUXER_NOT_FOUND
-	ErrorCodeEncoderNotFound  ErrorCode = C.AVERROR_ENCODER_NOT_FOUND
-	ErrorCodeEOF              ErrorCode = C.AVERROR_EOF
-	ErrorCodeExit             ErrorCode = C.AVERROR_EXIT
-	ErrorCodeExternal         ErrorCode = C.AVERROR_EXTERNAL
-	ErrorCodeFilterNotFound   ErrorCode = C.AVERROR_FILTER_NOT_FOUND
-	ErrorCodeInvalidData      ErrorCode = C.AVERROR_INVALIDDATA
-	ErrorCodeMuxerNotFound    ErrorCode = C.AVERROR_MUXER_NOT_FOUND
-	ErrorCodeOptionNotFound   ErrorCode = C.AVERROR_OPTION_NOT_FOUND
-	ErrorCodePatchWelcome     ErrorCode = C.AVERROR_PATCHWELCOME
-	ErrorCodeProtocolNotFound ErrorCode = C.AVERROR_PROTOCOL_NOT_FOUND
-	ErrorCodeStreamNotFound   ErrorCode = C.AVERROR_STREAM_NOT_FOUND
-	ErrorCodeBug2             ErrorCode = C.AVERROR_BUG2
-	ErrorCodeUnknown          ErrorCode = C.AVERROR_UNKNOWN
-	ErrorCodeExperimental     ErrorCode = C.AVERROR_EXPERIMENTAL
-	ErrorCodeInputChanged     ErrorCode = C.AVERROR_INPUT_CHANGED
-	ErrorCodeOutputChanged    ErrorCode = C.AVERROR_OUTPUT_CHANGED
-	ErrorCodeHttpBadRequest   ErrorCode = C.AVERROR_HTTP_BAD_REQUEST
-	ErrorCodeHttpUnauthorized ErrorCode = C.AVERROR_HTTP_UNAUTHORIZED
-	ErrorCodeHttpForbidden    ErrorCode = C.AVERROR_HTTP_FORBIDDEN
-	ErrorCodeHttpNotFound     ErrorCode = C.AVERROR_HTTP_NOT_FOUND
-	ErrorCodeHttpOther4xx     ErrorCode = C.AVERROR_HTTP_OTHER_4XX
-	ErrorCodeHttpServerError  ErrorCode = C.AVERROR_HTTP_SERVER_ERROR
-)
-
 type OptionSearchFlags int
 
 const (
@@ -174,7 +147,7 @@ func init() {
 }
 
 func Version() (int, int, int) {
-	return int(C.GO_AVUTIL_VERSION_MAJOR), int(C.GO_AVUTIL_VERSION_MINOR), int(C.GO_AVUTIL_VERSION_MICRO)
+	return int(C.LIBAVUTIL_VERSION_MAJOR), int(C.LIBAVUTIL_VERSION_MINOR), int(C.LIBAVUTIL_VERSION_MICRO)
 }
 
 func SetLogLevel(level LogLevel) {
@@ -441,8 +414,6 @@ func (r *Rational) Copy() *Rational {
 func (r *Rational) Float64() float64 {
 	return float64(r.CAVRational.num) / float64(r.CAVRational.den)
 }
-
-const NoPTSValue = int64(C.AV_NOPTS_VALUE)
 
 var StandardTimeBase = NewRational(1, C.AV_TIME_BASE)
 
@@ -1334,7 +1305,7 @@ func (oa *OptionAccessor) searchFlags(flags OptionSearchFlags) C.int {
 }
 
 func getOptionError(code C.int) error {
-	if code == C.AVERROR_OPTION_NOT_FOUND {
+	if ErrorCode(code) == ErrorCodeOptionNotFound {
 		return nil
 	}
 	return NewErrorFromCode(ErrorCode(code))
@@ -1353,7 +1324,7 @@ func NewExpr(value string, constNames []string) (*Expr, error) {
 		cConstNames[i] = C.CString(constName)
 		defer C.free(unsafe.Pointer(cConstNames[i]))
 	}
-	code := C.av_expr_parse(&e.CAVExpr, cValue, (**C.char)(&cConstNames[0]), nil, nil, nil, nil, 0, nil)
+	code := C.go_av_expr_parse2(&e.CAVExpr, cValue, (**C.char)(&cConstNames[0]), 0, nil)
 	if code < 0 {
 		return nil, NewErrorFromCode(ErrorCode(code))
 	}

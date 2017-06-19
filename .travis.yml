@@ -3,12 +3,14 @@ language: go
 go:
   - 1.5
   - 1.6
+  - 1.7
+  - 1.8
   - tip
 
 before_install:
   - echo $TRAVIS_GO_VERSION
   - go get -u golang.org/x/tools/cmd/cover
-  - if [[ $TRAVIS_GO_VERSION == 1.6* ]]; then go get -u github.com/golang/lint/golint; fi
+  - "[[ $TRAVIS_GO_VERSION != 1.8* ]] || go get -u github.com/golang/lint/golint"
   - sudo apt-get update
   - sudo apt-get install -y build-essential yasm libfaac-dev libmp3lame-dev libtheora-dev libvorbis-dev libvpx-dev libx264-dev libxvidcore-dev
   - wget -O ffmpeg.tar.bz2 http://ffmpeg.org/releases/ffmpeg-3.0.tar.bz2
@@ -16,9 +18,9 @@ before_install:
 
 script:
   - cd $TRAVIS_BUILD_DIR
-  - go get -t ./...
+  - "go get -d -t ./... || (cd $GOPATH/src/github.com/shirou/gopsutil && git checkout v2.17.04)"
   - make gofmt
-  - if [[ $TRAVIS_GO_VERSION == 1.6* ]]; then make golint; fi
+  - "[[ $TRAVIS_GO_VERSION != 1.8* ]] || make golint"
   - make govet
   - make test
   - make cover
