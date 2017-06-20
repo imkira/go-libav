@@ -447,6 +447,9 @@ func TestStreamEndPTSDefaultOK(t *testing.T) {
 func TestStreamEndPTSOK(t *testing.T) {
 	iCtx := testOpenInput(t)
 	defer iCtx.Free()
+	if size := iCtx.IOContext().Size(); size <= 0 {
+		t.Fatalf("[TestStreamEndPTSOK] result = %d, NG, expected more than 0", size)
+	}
 	oCtx, oStream := testCopy(t, iCtx)
 	defer oCtx.Free()
 	pkt := testWritePacket(t, iCtx, oCtx)
