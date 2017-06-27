@@ -30,6 +30,7 @@ package avfilter
 //#define GO_AVFILTER_AUTO_CONVERT_ALL ((unsigned)AVFILTER_AUTO_CONVERT_ALL)
 //#define GO_AVFILTER_AUTO_CONVERT_NONE ((unsigned)AVFILTER_AUTO_CONVERT_NONE)
 //
+// #cgo CFLAGS: -Wno-deprecated-declarations
 //#cgo pkg-config: libavfilter libavutil
 import "C"
 
