@@ -42,6 +42,7 @@ import "C"
 import (
 	"errors"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/imkira/go-libav/avcodec"
@@ -491,8 +492,13 @@ func (s *Stream) StartTime() int64 {
 	return int64(s.CAVStream.start_time)
 }
 
-func (s *Stream) Duration() int64 {
+func (s *Stream) RawDuration() int64 {
 	return int64(s.CAVStream.duration)
+}
+
+func (s *Stream) Duration() time.Duration {
+	timeBase := s.TimeBase().Float64()
+	return time.Duration((timeBase * float64(s.RawDuration())) * 1000 * 1000 * 1000)
 }
 
 func (s *Stream) NumberOfFrames() int64 {
@@ -942,17 +948,6 @@ func newCAVDictionaryArrayFromDictionarySlice(dicts []*avutil.Dictionary) **C.AV
 
 func freeCAVDictionaryArray(arr **C.AVDictionary) {
 	C.av_free(unsafe.Pointer(arr))
-}
-
-func ApplyBitstreamFilters(codecCtx *avcodec.Context, pkt *avcodec.Packet, filtersCtx *avcodec.BitStreamFilterContext) error {
-	cCodecCtx := (*C.AVCodecContext)(unsafe.Pointer(codecCtx.CAVCodecContext))
-	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	cFilters := (*C.AVBitStreamFilterContext)(unsafe.Pointer(filtersCtx.CAVBitStreamFilterContext))
-	code := C.av_apply_bitstream_filters(cCodecCtx, cPkt, cFilters)
-	if code < 0 {
-		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
-	}
-	return nil
 }
 
 func NumberedSequenceFormat(format string) bool {

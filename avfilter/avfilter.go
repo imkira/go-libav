@@ -230,16 +230,8 @@ func (l *Link) MaxSamples() int {
 	return int(l.CAVFilterLink.max_samples)
 }
 
-func (l *Link) Status() int {
-	return int(l.CAVFilterLink.status)
-}
-
 func (l *Link) Channels() int {
 	return int(C.avfilter_link_get_channels(l.CAVFilterLink))
-}
-
-func (l *Link) FrameCount() int64 {
-	return int64(l.CAVFilterLink.frame_count)
 }
 
 type Context struct {

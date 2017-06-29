@@ -7,23 +7,29 @@ go:
   - 1.8
   - tip
 
+env:
+  - FFMPEG_VER=ffmpeg30
+  - FFMPEG_VER=ffmpeg33
+
 before_install:
   - echo $TRAVIS_GO_VERSION
   - go get -u golang.org/x/tools/cmd/cover
   - "[[ $TRAVIS_GO_VERSION != 1.8* ]] || go get -u github.com/golang/lint/golint"
+  - go get -u github.com/shirou/gopsutil
+  - go get -u golang.org/x/sys/unix
   - sudo apt-get update
   - sudo apt-get install -y build-essential yasm libfaac-dev libmp3lame-dev libtheora-dev libvorbis-dev libvpx-dev libx264-dev libxvidcore-dev
-  - wget -O ffmpeg.tar.bz2 http://ffmpeg.org/releases/ffmpeg-3.0.tar.bz2
-  - mkdir ffmpeg && tar xvf ffmpeg.tar.bz2 -C ffmpeg --strip-components=1 && cd ffmpeg && ./configure --prefix=/usr/local --disable-debug --enable-pthreads --enable-nonfree --enable-gpl --disable-indev=jack --enable-libx264 --enable-libfaac --enable-libmp3lame --enable-libtheora --enable-libvorbis --enable-libvpx --enable-libxvid --enable-libmp3lame --enable-openssl && make && sudo make install
 
 script:
-  - cd $TRAVIS_BUILD_DIR
   - "go get -d -t ./... || (cd $GOPATH/src/github.com/shirou/gopsutil && git checkout v2.17.04)"
+  - make fixtures
+  - make $FFMPEG_VER
+  - go test -v ./... -tags $FFMPEG_VER
   - make gofmt
   - "[[ $TRAVIS_GO_VERSION != 1.8* ]] || make golint"
   - make govet
-  - make test
-  - make cover
+  - FFMPEG_TAG=$FFMPEG_VER make cover-test
+  - FFMPEG_TAG=$FFMPEG_VER make cover
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

@@ -2,13 +2,24 @@ package avcodec
 
 import (
 	"bytes"
+	"log"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/imkira/go-libav/avutil"
 	"github.com/shirou/gopsutil/process"
 )
+
+func hasVersion(wantMajor, wantMinor int) bool {
+	gotMajor, gotMinor, _ := Version()
+	if gotMajor > wantMajor {
+		return true
+	}
+	if gotMajor == wantMajor && gotMinor >= wantMinor {
+		return true
+	}
+	return false
+}
 
 func TestVersion(t *testing.T) {
 	major, minor, micro := Version()
@@ -142,26 +153,38 @@ func TestCodecDescriptor_Profiles(t *testing.T) {
 		name string
 	}
 	datas := []*data{
-		&data{id: 66, name: "Baseline"},
-		&data{id: 578, name: "Constrained Baseline"},
-		&data{id: 77, name: "Main"},
-		&data{id: 88, name: "Extended"},
-		&data{id: 100, name: "High"},
-		&data{id: 110, name: "High 10"},
-		&data{id: 2158, name: "High 10 Intra"},
-		&data{id: 122, name: "High 4:2:2"},
-		&data{id: 2170, name: "High 4:2:2 Intra"},
-		&data{id: 144, name: "High 4:4:4"},
-		&data{id: 244, name: "High 4:4:4 Predictive"},
-		&data{id: 2292, name: "High 4:4:4 Intra"},
-		&data{id: 44, name: "CAVLC 4:4:4"},
+		{id: 66, name: "Baseline"},
+		{id: 578, name: "Constrained Baseline"},
+		{id: 77, name: "Main"},
+		{id: 88, name: "Extended"},
+		{id: 100, name: "High"},
+		{id: 110, name: "High 10"},
+		{id: 2158, name: "High 10 Intra"},
+		{id: 122, name: "High 4:2:2"},
+		{id: 2170, name: "High 4:2:2 Intra"},
+		{id: 144, name: "High 4:4:4"},
+		{id: 244, name: "High 4:4:4 Predictive"},
+		{id: 2292, name: "High 4:4:4 Intra"},
+		{id: 44, name: "CAVLC 4:4:4"},
 	}
+	if hasVersion(57, 50) {
+		// added in avcodec 57.50.100
+		datas = append(datas, []*data{
+			{id: 118, name: "Multiview High"},
+			{id: 128, name: "Stereo High"},
+		}...)
+	}
+
 	desc := CodecDescriptorByName("h264")
 	if desc == nil {
 		t.Fatal("not found")
 	}
 	profiles := desc.Profiles()
 	if len(datas) != len(profiles) {
+		log.Println("UNEXPECTED profiles list:")
+		for _, p := range profiles {
+			log.Println(p.ID(), p.Name())
+		}
 		t.Fatalf("profiles count expected:%d, got:%d", len(datas), len(profiles))
 	}
 	for i, profile := range profiles {
@@ -256,26 +279,38 @@ func TestCodecProfiles(t *testing.T) {
 		name string
 	}
 	datas := []*data{
-		&data{id: 66, name: "Baseline"},
-		&data{id: 578, name: "Constrained Baseline"},
-		&data{id: 77, name: "Main"},
-		&data{id: 88, name: "Extended"},
-		&data{id: 100, name: "High"},
-		&data{id: 110, name: "High 10"},
-		&data{id: 2158, name: "High 10 Intra"},
-		&data{id: 122, name: "High 4:2:2"},
-		&data{id: 2170, name: "High 4:2:2 Intra"},
-		&data{id: 144, name: "High 4:4:4"},
-		&data{id: 244, name: "High 4:4:4 Predictive"},
-		&data{id: 2292, name: "High 4:4:4 Intra"},
-		&data{id: 44, name: "CAVLC 4:4:4"},
+		{id: 66, name: "Baseline"},
+		{id: 578, name: "Constrained Baseline"},
+		{id: 77, name: "Main"},
+		{id: 88, name: "Extended"},
+		{id: 100, name: "High"},
+		{id: 110, name: "High 10"},
+		{id: 2158, name: "High 10 Intra"},
+		{id: 122, name: "High 4:2:2"},
+		{id: 2170, name: "High 4:2:2 Intra"},
+		{id: 144, name: "High 4:4:4"},
+		{id: 244, name: "High 4:4:4 Predictive"},
+		{id: 2292, name: "High 4:4:4 Intra"},
+		{id: 44, name: "CAVLC 4:4:4"},
 	}
+	if hasVersion(57, 50) {
+		// added in avcodec 57.50.100
+		datas = append(datas, []*data{
+			{id: 118, name: "Multiview High"},
+			{id: 128, name: "Stereo High"},
+		}...)
+	}
+
 	codec := FindDecoderByName("h264")
 	if codec == nil {
 		t.Fatal("codec not found")
 	}
 	profiles := codec.Profiles()
 	if len(datas) != len(profiles) {
+		log.Println("UNEXPECTED profiles list:")
+		for _, p := range profiles {
+			log.Println(p.ID(), p.Name())
+		}
 		t.Fatalf("profiles count expected:%d, got:%d", len(datas), len(profiles))
 	}
 	for i, profile := range profiles {
@@ -409,99 +444,4 @@ func findPixelFormatByName(name string, t *testing.T) avutil.PixelFormat {
 		t.Fatalf("pixel format not found")
 	}
 	return pixFmt
-}
-
-func TestNewBitStreamFilterContextFromName(t *testing.T) {
-	ctx, err := NewBitStreamFilterContextFromName("invalid")
-	if err != ErrBitStreamFilterNotFound {
-		t.Fatalf("[NewBitStreamFilterContextFromName] err=%v, NG expected=%v", err, ErrBitStreamFilterNotFound)
-	}
-	if ctx != nil {
-		t.Fatalf("[NewBitStreamFilterContextFromName] ctx=%v, NG expected is nil", ctx)
-	}
-	ctx, err = NewBitStreamFilterContextFromName("h264_mp4toannexb")
-	if err != nil {
-		t.Fatalf("[NewBitStreamFilterContextFromName] err=%v, NG expected not error", err)
-	}
-	if ctx == nil {
-		t.Fatalf("[NewBitStreamFilterContextFromName] ctx is nil, NG expected is not nil")
-	}
-	ctx.Close()
-}
-
-func TestBitStreamFilterContext_Next(t *testing.T) {
-	ctx, err := NewBitStreamFilterContextFromName("h264_mp4toannexb")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ctx.Close()
-	result := ctx.Next()
-	if result != nil {
-		t.Fatalf("[TestBitStreamFilterContext_Next] result=%v, NG expected nil", result)
-	}
-
-	next, err := NewBitStreamFilterContextFromName("mjpeg2jpeg")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer next.Close()
-	ctx.SetNext(next)
-	result = ctx.Next()
-	if !reflect.DeepEqual(next, result) {
-		t.Fatalf("[TestBitStreamFilterContext_Next] next=%p, getNext=%p, NG expected same", next, result)
-	}
-}
-
-func TestBitStreamFilterContext_Args(t *testing.T) {
-	ctx, err := NewBitStreamFilterContextFromName("h264_mp4toannexb")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ctx.Close()
-
-	_, ok := ctx.ArgsOK()
-	if ok {
-		t.Fatalf("[TestBitStreamFilterContext_Args] ok=%t, NG expected=%t", ok, false)
-	}
-	result := ctx.Args()
-	if result != "" {
-		t.Fatalf("[TestBitStreamFilterContext_Args] result=%s, NG expected blank", result)
-	}
-
-	input := avutil.String("argstest")
-	if err := ctx.SetArgs(input); err != nil {
-		t.Fatalf("[TestBitStreamFilterContext_Args] err=%v, NG expected not error", err)
-	}
-	_, ok = ctx.ArgsOK()
-	if !ok {
-		t.Fatalf("[TestBitStreamFilterContext_Args] ok=%t, NG expected=%t", ok, true)
-	}
-	result = ctx.Args()
-	if result != *input {
-		t.Fatalf("[TestBitStreamFilterContext_Args] result=%s, NG expected=%s", result, *input)
-	}
-
-	if err := ctx.SetArgs(nil); err != nil {
-		t.Fatalf("[TestBitStreamFilterContext_Args] err=%v, NG expected not error", err)
-	}
-	_, ok = ctx.ArgsOK()
-	if ok {
-		t.Fatalf("[TestBitStreamFilterContext_Args] ok=%t, NG expected=%t", ok, false)
-	}
-	result = ctx.Args()
-	if result != "" {
-		t.Fatalf("[TestBitStreamFilterContext_Args] result=%s, NG expected blank", result)
-	}
-}
-
-func TestBitStreamFilterContext_CloseAll1M(t *testing.T) {
-	before := testMemoryUsed(t)
-	for i := 0; i < 1000000; i++ {
-		ctx, err := NewBitStreamFilterContextFromName("h264_mp4toannexb")
-		if err != nil {
-			t.Fatal(err)
-		}
-		ctx.Close()
-	}
-	testMemoryLeak(t, before, 50*1024*1024)
 }
