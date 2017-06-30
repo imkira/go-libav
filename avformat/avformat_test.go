@@ -3,7 +3,9 @@ package avformat
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -181,12 +183,12 @@ func TestOutput_GuessCodecID(t *testing.T) {
 		expectedAudio string
 	}
 	datas := []*testData{
-		&testData{
+		{
 			filename:      "test.mp4",
 			expectedVideo: "libx264",
 			expectedAudio: "aac",
 		},
-		&testData{
+		{
 			filename:      "test.png",
 			expectedVideo: "png",
 			expectedAudio: "none",
@@ -777,4 +779,63 @@ func testMemoryLeak(t *testing.T, before uint64, diff uint64) {
 	if after > before && after-before > diff {
 		t.Fatalf("memory leak detected: %d bytes", after-before)
 	}
+}
+
+func ExampleShowMediaInfo() {
+	inputFileName := fixturePath("sample_iPod.m4v")
+
+	// open format (container) context
+	decFmt, err := NewContextForInput()
+	if err != nil {
+		log.Fatalf("Failed to open input context: %v. Run 'make fixture' to fetch the required files", err)
+	}
+
+	// set some options for opening file
+	options := avutil.NewDictionary()
+	defer options.Free()
+
+	// open file for decoding
+	if err := decFmt.OpenInput(inputFileName, nil, options); err != nil {
+		log.Fatalf("Failed to open input file: %v", err)
+	}
+	defer decFmt.CloseInput()
+
+	// initialize context with stream information
+	if err := decFmt.FindStreamInfo(nil); err != nil {
+		log.Fatalf("Failed to find stream info: %v", err)
+	}
+
+	// show stream info
+	for _, stream := range decFmt.Streams() {
+		language := stream.MetaData().Get("language")
+		streamCtx := stream.CodecContext()
+		duration := stream.Duration()
+		codecID := streamCtx.CodecID()
+		descriptor := avcodec.CodecDescriptorByID(codecID)
+		switch streamCtx.CodecType() {
+		case avutil.MediaTypeVideo:
+			width := streamCtx.Width()
+			height := streamCtx.Height()
+			frameRate := stream.AverageFrameRate().Float64()
+			fmt.Printf("stream %d: %s video, %dx%d in %.2f fps, %v\n",
+				stream.Index(),
+				descriptor.Name(),
+				width,
+				height,
+				frameRate,
+				duration)
+		case avutil.MediaTypeAudio:
+			channels := streamCtx.Channels()
+			sampleRate := streamCtx.SampleRate()
+			fmt.Printf("stream %d: %s audio, %s, %d channels, %d Hz\n",
+				stream.Index(),
+				descriptor.Name(),
+				language,
+				channels,
+				sampleRate)
+		}
+	}
+	// Output:
+	// stream 0: aac audio, eng, 2 channels, 44100 Hz
+	// stream 1: h264 video, 320x240 in 10.00 fps, 1m25.5s
 }

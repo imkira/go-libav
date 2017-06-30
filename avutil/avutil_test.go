@@ -408,13 +408,13 @@ type dictionaryStringTestData struct {
 
 func TestDictionaryString(t *testing.T) {
 	datas := []*dictionaryStringTestData{
-		&dictionaryStringTestData{
+		{
 			contents:  map[string]string{},
 			keyValSep: '=',
 			pairsSep:  ':',
 			expected:  "",
 		},
-		&dictionaryStringTestData{
+		{
 			contents: map[string]string{
 				"key1": "val1",
 				"key2": "val2",
@@ -423,7 +423,7 @@ func TestDictionaryString(t *testing.T) {
 			pairsSep:  ':',
 			expected:  "key1=val1:key2=val2",
 		},
-		&dictionaryStringTestData{
+		{
 			contents:  map[string]string{},
 			keyValSep: '\\',
 			pairsSep:  ':',
@@ -503,27 +503,27 @@ type parseTimeTestData struct {
 
 func TestParseTime(t *testing.T) {
 	datas := []*parseTimeTestData{
-		&parseTimeTestData{
+		{
 			timestr:  "1.5",
 			duration: true,
 			expected: 1500000,
 		},
-		&parseTimeTestData{
+		{
 			timestr:  "-1.5",
 			duration: true,
 			expected: -1500000,
 		},
-		&parseTimeTestData{
+		{
 			timestr:  "01:30",
 			duration: true,
 			expected: 90000000,
 		},
-		&parseTimeTestData{
+		{
 			timestr:  "01:01:30",
 			duration: true,
 			expected: 3690000000,
 		},
-		&parseTimeTestData{
+		{
 			timestr:  "2000-01-01 00:00:00Z",
 			duration: false,
 			expected: 946684800000000,
@@ -652,19 +652,19 @@ func TestExprInvalidParams(t *testing.T) {
 		constNames []string
 	}
 	datas := []*exprTestData{
-		&exprTestData{
+		{
 			value:      "invalid",
 			constNames: []string{"n", "n_forced", "prev_forced_n", "prev_forced_t", "t", ""},
 		},
-		&exprTestData{
+		{
 			value:      "gte(t,n_forced*5)",
 			constNames: []string{"invalid"},
 		},
-		&exprTestData{
+		{
 			value:      "gte(t,n_forced*5)",
 			constNames: []string{},
 		},
-		&exprTestData{
+		{
 			value:      "gte(t,n_forced*5)",
 			constNames: nil,
 		},
@@ -701,7 +701,7 @@ func TestExprEvaluateOK(t *testing.T) {
 		}
 		constValues[4] = float64(i) + 1
 		if result > 0 {
-			constValues[1] += 1
+			constValues[1]++
 		}
 	}
 }

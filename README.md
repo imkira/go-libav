@@ -50,6 +50,18 @@ For advanced usage, make sure to check the following documentation:
 
 Please check [here for examples](https://github.com/imkira/go-libav/tree/master/examples).
 
+# FFmpeg versions
+
+This library supports multiple versions of FFmpeg 3.x, to build, use
+
+```
+go build -tags ffmpeg33
+go test -tags ffmpeg33
+go run -tags ffmpeg33 examples/mediainfo/mediainfo.go
+```
+
+Use `ffmpeg30` for FFmpeg 3.0 API, `ffmpeg33` for FFmpeg 3.3 API.
+
 # Contribute
 
 Found a bug? Want to contribute and add a new feature?
