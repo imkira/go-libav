@@ -313,6 +313,36 @@ func TestContextOpenInputExistent(t *testing.T) {
 	defer ctx.CloseInput()
 }
 
+func TestContextSize(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+	fixture := fixturePath("sample_mpeg4.mp4")
+
+	options := avutil.NewDictionary()
+	defer options.Free()
+
+	err := ctx.OpenInput(fixture, nil, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.CloseInput()
+
+	size := ctx.Size()
+	if size != 245779 {
+		t.Fatalf("Expecting %d but got %d", 245779, size)
+	}
+}
+
+func TestContextSizeWhitoutInput(t *testing.T) {
+	ctx, _ := NewContextForInput()
+	defer ctx.Free()
+
+	size := ctx.Size()
+	if size != -1 {
+		t.Fatalf("Expecting %d but got %d", -1, size)
+	}
+}
+
 func TestContextOpenInputWithOptions(t *testing.T) {
 	ctx, _ := NewContextForInput()
 	defer ctx.Free()
