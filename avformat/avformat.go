@@ -724,6 +724,14 @@ func (ctx *Context) SetFileName(fileName string) {
 	C.av_strlcpy(&ctx.CAVFormatContext.filename[0], cFileName, C.sizeOfAVFormatContextFilename)
 }
 
+func (ctx *Context) Size() int64 {
+	if ctx.CAVFormatContext.pb != nil {
+		return int64(C.avio_size(ctx.CAVFormatContext.pb))
+	}
+
+	return -1
+}
+
 func (ctx *Context) StartTime() int64 {
 	return int64(ctx.CAVFormatContext.start_time)
 }
