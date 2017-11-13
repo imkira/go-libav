@@ -30,7 +30,7 @@ package avfilter
 //#define GO_AVFILTER_AUTO_CONVERT_ALL ((unsigned)AVFILTER_AUTO_CONVERT_ALL)
 //#define GO_AVFILTER_AUTO_CONVERT_NONE ((unsigned)AVFILTER_AUTO_CONVERT_NONE)
 //
-//#cgo pkg-config: libavfilter libavutil
+// #cgo LDFLAGS: -lavfilter -lavutil
 import "C"
 
 import (

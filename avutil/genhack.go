@@ -148,7 +148,7 @@ package avutil
 //  return (int64_t)(AV_NOPTS_VALUE);
 //}
 //
-// #cgo pkg-config: libavutil
+// #cgo LDFLAGS: -lavutil
 import "C"
 
 const (

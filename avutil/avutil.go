@@ -54,7 +54,7 @@ package avutil
 //  return AVERROR(e);
 //}
 //
-// #cgo pkg-config: libavutil
+// #cgo LDFLAGS: -lavutil
 import "C"
 
 import (
