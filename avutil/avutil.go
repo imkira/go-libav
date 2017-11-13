@@ -1266,15 +1266,23 @@ func (oa *OptionAccessor) SetVideoRateOptionWithFlags(name string, value *Ration
 	return nil
 }
 
-func (oa *OptionAccessor) SetChannelLayoutOption(name string, value int64) error {
-	return oa.SetChannelLayoutOptionWithFlags(name, value, OptionSearchChildren)
+func (oa *OptionAccessor) SetChannelLayoutOption(value ChannelLayout) error {
+	return oa.SetChannelLayoutOptionWithFlags(value, OptionSearchChildren)
 }
 
-func (oa *OptionAccessor) SetChannelLayoutOptionWithFlags(name string, value int64, flags OptionSearchFlags) error {
+func (oa *OptionAccessor) SetChannelLayoutOptionWithFlags(value ChannelLayout, flags OptionSearchFlags) error {
+	return oa.SetOptionWithFlags("channel_layout", value.Name(), flags)
+}
+
+func (oa *OptionAccessor) SetSampleFormatOption(name string, value SampleFormat) error {
+	return oa.SetSampleFormatOptionWithFlags(name, value, OptionSearchChildren)
+}
+
+func (oa *OptionAccessor) SetSampleFormatOptionWithFlags(name string, value SampleFormat, flags OptionSearchFlags) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	searchFlags := oa.searchFlags(flags)
-	code := C.av_opt_set_channel_layout(oa.obj, cName, (C.int64_t)(value), searchFlags)
+	code := C.av_opt_set_sample_fmt(oa.obj, cName, (C.enum_AVSampleFormat)(value), searchFlags)
 	if code < 0 {
 		return NewErrorFromCode(ErrorCode(code))
 	}
