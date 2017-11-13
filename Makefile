@@ -23,7 +23,7 @@ FIXTURE_TARGETS=$(addprefix fixtures/,$(FIXTURES))
 $(FIXTURE_TARGETS):
 	mkdir -p "$(dir $@)"
 	rm -f "$@.zip" "$@"
-	cd "$(dir $@)" && curl -L "https://bintray.com/imkira/go-libav/download_file?file_path=$(notdir $@)" -o "$(notdir $@)"
+	cd "$(dir $@)" && curl -L "https://bintray.com/SpalkLtd/go-libav/download_file?file_path=$(notdir $@)" -o "$(notdir $@)"
 	rm -f "$@.zip"
 
 fixtures: $(FIXTURE_TARGETS)

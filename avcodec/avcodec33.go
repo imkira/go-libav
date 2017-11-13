@@ -11,7 +11,7 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/imkira/go-libav/avutil"
+	"github.com/SpalkLtd/go-libav/avutil"
 )
 
 type CodecParameters struct {

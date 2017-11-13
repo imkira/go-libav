@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/imkira/go-libav/avutil"
+	"github.com/SpalkLtd/go-libav/avutil"
 	"github.com/shirou/gopsutil/process"
 )
 
