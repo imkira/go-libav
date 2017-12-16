@@ -4,14 +4,24 @@ package avcodec
 
 //#include <libavutil/avutil.h>
 //#include <libavcodec/avcodec.h>
-//
+//#include <libavutil/error.h>
+//static const int GO_AVERROR(int e)
+//{
+//  return AVERROR(e);
+//}
 // #cgo LDFLAGS: -lavcodec -lavutil
 import "C"
 
 import (
+	"errors"
+	"strings"
 	"unsafe"
 
 	"github.com/SpalkLtd/go-libav/avutil"
+)
+
+var (
+	ErrGotNoFrame = errors.New("avcodec: GotFrame == 0, this means we got no frame from the encoder")
 )
 
 type CodecParameters struct {
@@ -53,60 +63,66 @@ func (ctx *Context) CopyTo(dst *Context) error {
 	return nil
 }
 
-func (ctx *Context) DecodeVideo(pkt *Packet, frame *avutil.Frame) (bool, int, error) {
-	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+func (ctx *Context) Decode(pkt *Packet) (bool, []*avutil.Frame, error) {
+	frames := []*avutil.Frame{}
+
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	C.avcodec_send_packet(ctx.CAVCodecContext, cPkt)
-	code := C.avcodec_receive_frame(ctx.CAVCodecContext, cFrame)
 	var err error
-	if code < 0 {
-		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
-		code = 0
+	var code C.int
+	for {
+		frame, err := avutil.NewFrame()
+		if err != nil {
+			return false, nil, err
+		}
+		cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+		code = C.avcodec_receive_frame(ctx.CAVCodecContext, cFrame)
+		if code < 0 {
+			err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
+			if code == C.GO_AVERROR(C.EAGAIN) {
+				// We have all the output we are going to get
+				break
+			}
+			code = 0
+			return false, nil, err
+		}
+		frames = append(frames, frame)
 	}
-	return code == 0, int(code), err
+	return code == C.GO_AVERROR(C.EAGAIN), frames, err
 }
 
-func (ctx *Context) DecodeAudio(pkt *Packet, frame *avutil.Frame) (bool, int, error) {
-	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
-	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	C.avcodec_send_packet(ctx.CAVCodecContext, cPkt)
-	code := C.avcodec_receive_frame(ctx.CAVCodecContext, cFrame)
-	var err error
-	if code < 0 {
-		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
-		code = 0
-	}
-	return code == 0, int(code), err
-}
-
-func (ctx *Context) EncodeVideo(pkt *Packet, frame *avutil.Frame) (bool, error) {
+func (ctx *Context) Encode(pkt *Packet, frames []*avutil.Frame) (int, error) {
 	var cGotFrame C.int
 	var cFrame *C.AVFrame
-	if frame != nil {
-		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+	var code C.int
+	var frame *avutil.Frame
+	var count int
+	if frames != nil {
+		for {
+			if len(frames) == 0 {
+				break
+			}
+			frame, frames = frames[0], frames[1:]
+			cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+			code = C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
+			var err error
+			if code < 0 {
+				err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
+				if !strings.HasPrefix(err.Error(), "Resource temporarily unavailable") {
+					return count, err
+				} else {
+					// Stop calling this as we need to drain the buffer
+					break
+				}
+			}
+			count += 1
+		}
 	}
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	code := C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
-	C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
-	var err error
-	if code < 0 {
-		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
-	}
-	return (cGotFrame != (C.int)(0)), err
-}
 
-func (ctx *Context) EncodeAudio(pkt *Packet, frame *avutil.Frame) (bool, error) {
-	var cGotFrame C.int
-	var cFrame *C.AVFrame
-	if frame != nil {
-		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+	cGotFrame = C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
+	if cGotFrame == (C.int)(0) {
+		return count, ErrGotNoFrame
 	}
-	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	code := C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
-	C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
-	var err error
-	if code < 0 {
-		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
-	}
-	return (cGotFrame != (C.int)(0)), err
+	return count, nil
 }
