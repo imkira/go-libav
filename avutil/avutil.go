@@ -11,6 +11,7 @@ package avutil
 //#include <libavutil/parseutils.h>
 //#include <libavutil/common.h>
 //#include <libavutil/eval.h>
+//#include <libavutil/audio_fifo.h>
 //
 //#ifdef AV_LOG_TRACE
 //#define GO_AV_LOG_TRACE AV_LOG_TRACE
@@ -1402,4 +1403,231 @@ func boolToCInt(b bool) C.int {
 		return 1
 	}
 	return 0
+}
+
+type AudioFifo struct {
+	CAudioFifo *C.struct_AVAudioFifo
+}
+
+/**
+ * Allocate an AVAudioFifo.
+ *
+ * @param sample_fmt  sample format
+ * @param channels    number of channels
+ * @param nb_samples  initial allocation size, in samples
+ * @return            newly allocated AVAudioFifo, or NULL on error
+ */
+
+func NewAudioFifo(sf SampleFormat, channels, nb_samples int) (*AudioFifo, error) {
+	//*av_audio_fifo_alloc(enum AVSampleFormat sample_fmt, int channels, int nb_samples);
+	if channels == 0 {
+		return nil, errors.New("Can't allocate new fife with 0 channels")
+	}
+	if nb_samples == 0 {
+		return nil, errors.New("Can't allocate new fife with 0 samples")
+	}
+	cName := C.CString(sf.Name())
+	defer C.free(unsafe.Pointer(cName))
+	cSampleFormat := C.av_get_sample_fmt(cName)
+	cAudioFifo := C.av_audio_fifo_alloc(cSampleFormat, C.int(channels), C.int(nb_samples))
+	if cAudioFifo == nil {
+		return nil, ErrAllocationError
+	}
+	return NewAudioFifoFromC(unsafe.Pointer(cAudioFifo)), nil
+}
+
+func NewAudioFifoFromC(cFifo unsafe.Pointer) *AudioFifo {
+	return &AudioFifo{CAudioFifo: (*C.struct_AVAudioFifo)(cFifo)}
+}
+
+/**
+ * Free an AVAudioFifo.
+ *
+ * @param af  AVAudioFifo to free
+ */
+// void av_audio_fifo_free(AVAudioFifo *af);
+func (a *AudioFifo) Free() {
+	if a.CAudioFifo != nil {
+		C.av_audio_fifo_free(a.CAudioFifo)
+	}
+}
+
+/**
+ * Write data to an AVAudioFifo.
+ *
+ * The AVAudioFifo will be reallocated automatically if the available space
+ * is less than nb_samples.
+ *
+ * @see enum AVSampleFormat
+ * The documentation for AVSampleFormat describes the data layout.
+ *
+ * @param af          AVAudioFifo to write to
+ * @param data        audio data plane pointers
+ * @param nb_samples  number of samples to write
+ * @return            number of samples actually written, or negative AVERROR
+ *                    code on failure. If successful, the number of samples
+ *                    actually written will always be nb_samples.
+ */
+// int av_audio_fifo_write(AVAudioFifo *af, void **data, int nb_samples);
+func (a *AudioFifo) Write(data unsafe.Pointer, nb_samples int) (int, error) {
+	if a.CAudioFifo != nil {
+		if nb_samples == 0 {
+			return 0, errors.New("No samples provided to write to Fifo")
+		}
+		cNbSamples := C.int(nb_samples)
+		cCode := C.av_audio_fifo_write(a.CAudioFifo, &data, cNbSamples)
+		if cCode < 0 {
+			return 0, NewErrorFromCode(ErrorCode(cCode))
+		} else {
+			return int(cCode), nil
+		}
+	}
+	return 0, errors.New("AudioFifo not allocated")
+}
+
+/**
+ * Peek data from an AVAudioFifo.
+ *
+ * @see enum AVSampleFormat
+ * The documentation for AVSampleFormat describes the data layout.
+ *
+ * @param af          AVAudioFifo to read from
+ * @param data        audio data plane pointers
+ * @param nb_samples  number of samples to peek
+ * @return            number of samples actually peek, or negative AVERROR code
+ *                    on failure. The number of samples actually peek will not
+ *                    be greater than nb_samples, and will only be less than
+ *                    nb_samples if av_audio_fifo_size is less than nb_samples.
+ */
+// int av_audio_fifo_peek(AVAudioFifo *af, void **data, int nb_samples);
+func (a *AudioFifo) Peek(maxSamples int) ([]C.uint8_t, error) {
+	return a.PeekAt(maxSamples, 0)
+}
+
+/**
+ * Peek data from an AVAudioFifo.
+ *
+ * @see enum AVSampleFormat
+ * The documentation for AVSampleFormat describes the data layout.
+ *
+ * @param af          AVAudioFifo to read from
+ * @param data        audio data plane pointers
+ * @param nb_samples  number of samples to peek
+ * @param offset      offset from current read position
+ * @return            number of samples actually peek, or negative AVERROR code
+ *                    on failure. The number of samples actually peek will not
+ *                    be greater than nb_samples, and will only be less than
+ *                    nb_samples if av_audio_fifo_size is less than nb_samples.
+ */
+// int av_audio_fifo_peek_at(AVAudioFifo *af, void **data, int nb_samples, int offset);
+func (a *AudioFifo) PeekAt(maxSamples, offset int) ([]C.uint8_t, error) {
+	data := []C.uint8_t{}
+	nb_samples := C.int(maxSamples)
+	c_offset := C.int(offset)
+	c_data := unsafe.Pointer(&data)
+	cCode := C.av_audio_fifo_peek_at(a.CAudioFifo, &c_data, nb_samples, c_offset)
+	if cCode < 0 {
+		return data, NewErrorFromCode(ErrorCode(cCode))
+	} else {
+		return data, nil
+	}
+}
+
+/**
+ * Read data from an AVAudioFifo.
+ *
+ * @see enum AVSampleFormat
+ * The documentation for AVSampleFormat describes the data layout.
+ *
+ * @param af          AVAudioFifo to read from
+ * @param data        audio data plane pointers
+ * @param nb_samples  number of samples to read
+ * @return            number of samples actually read, or negative AVERROR code
+ *                    on failure. The number of samples actually read will not
+ *                    be greater than nb_samples, and will only be less than
+ *                    nb_samples if av_audio_fifo_size is less than nb_samples.
+ */
+// int av_audio_fifo_read(AVAudioFifo *af, void **data, int nb_samples);
+func (a *AudioFifo) Read(nb_samples int) ([]C.uint8_t, error) {
+	cNbSamples := C.int(nb_samples)
+	data := []C.uint8_t{}
+	c_data := unsafe.Pointer(&data)
+	cCode := C.av_audio_fifo_read(a.CAudioFifo, &c_data, cNbSamples)
+	if cCode < 0 {
+		return data, NewErrorFromCode(ErrorCode(cCode))
+	} else {
+		return data, nil
+	}
+}
+
+/**
+ * Drain data from an AVAudioFifo.
+ *
+ * Removes the data without reading it.
+ *
+ * @param af          AVAudioFifo to drain
+ * @param nb_samples  number of samples to drain
+ * @return            0 if OK, or negative AVERROR code on failure
+ */
+// int av_audio_fifo_drain(AVAudioFifo *af, int nb_samples);
+func (a *AudioFifo) Drain(nb_samples int) error {
+	cNbSamples := C.int(nb_samples)
+	cCode := C.av_audio_fifo_drain(a.CAudioFifo, cNbSamples)
+	if cCode < 0 {
+		return NewErrorFromCode(ErrorCode(cCode))
+	}
+	return nil
+}
+
+/**
+ * Reset the AVAudioFifo buffer.
+ *
+ * This empties all data in the buffer.
+ *
+ * @param af  AVAudioFifo to reset
+ */
+// void av_audio_fifo_reset(AVAudioFifo *af);
+func (a *AudioFifo) Reset() {
+	C.av_audio_fifo_reset(a.CAudioFifo)
+}
+
+/**
+ * Get the current number of samples in the AVAudioFifo available for reading.
+ *
+ * @param af  the AVAudioFifo to query
+ * @return    number of samples available for reading
+ */
+// int av_audio_fifo_size(AVAudioFifo *af);
+func (a *AudioFifo) Size() int {
+	size := C.av_audio_fifo_size(a.CAudioFifo)
+	return int(size)
+}
+
+/**
+ * Get the current number of samples in the AVAudioFifo available for writing.
+ *
+ * @param af  the AVAudioFifo to query
+ * @return    number of samples available for writing
+ */
+// int av_audio_fifo_space(AVAudioFifo *af);
+func (a *AudioFifo) Space() int {
+	space := C.av_audio_fifo_space(a.CAudioFifo)
+	return int(space)
+}
+
+/**
+ * Reallocate an AVAudioFifo.
+ *
+ * @param af          AVAudioFifo to reallocate
+ * @param nb_samples  new allocation size, in samples
+ * @return            0 if OK, or negative AVERROR code on failure
+ */
+// int av_audio_fifo_realloc(AVAudioFifo *af, int nb_samples);
+func (a *AudioFifo) Realloc(nb_samples int) error {
+	cNbSamples := C.int(nb_samples)
+	cCode := C.av_audio_fifo_realloc(a.CAudioFifo, cNbSamples)
+	if cCode < 0 {
+		return NewErrorFromCode(ErrorCode(cCode))
+	}
+	return nil
 }
