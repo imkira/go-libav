@@ -41,7 +41,8 @@ import (
 )
 
 var (
-	ErrAllocationError = errors.New("allocation error")
+	ErrAllocationError = errors.New("avfilter: allocation error")
+	ErrNoFilter        = errors.New("avfilter: Could not find filter")
 )
 
 type Flags int
@@ -132,14 +133,14 @@ func Filters() []*Filter {
 	return filters
 }
 
-func FindFilterByName(name string) *Filter {
+func FindFilterByName(name string) (*Filter, error) {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 	cFilter := C.avfilter_get_by_name(cName)
 	if cFilter == nil {
-		return nil
+		return nil, ErrNoFilter
 	}
-	return NewFilterFromC(unsafe.Pointer(cFilter))
+	return NewFilterFromC(unsafe.Pointer(cFilter)), nil
 }
 
 type Link struct {
