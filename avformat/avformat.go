@@ -668,16 +668,46 @@ func (ctx *Context) WriteTrailer() error {
 	return nil
 }
 
-func (ctx *Context) ReadFrame(pkt *avcodec.Packet) (bool, error) {
+func (ctx *Context) ReadFrame() (*avcodec.Packet, error) {
+	pkt, err := avcodec.NewPacket()
+	if err != nil {
+		return nil, err
+	}
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	code := C.av_read_frame(ctx.CAVFormatContext, cPkt)
 	if code < 0 {
-		if avutil.ErrorCode(code) == avutil.ErrorCodeEOF {
-			return false, nil
-		}
-		return false, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+		// if avutil.ErrorCode(code) == avutil.ErrorCodeEOF {
+		// 	return nil, nil
+		// }
+		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return true, nil
+	return pkt, nil
+}
+
+/**
+* Start playing a network-based stream (e.g. RTSP stream) at the
+* current position.
+ */
+func (ctx *Context) ReadPlay() error {
+
+	code := C.av_read_play(ctx.CAVFormatContext)
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
+}
+
+/**
+* Pause playing a network-based stream (e.g. RTSP stream) at the
+* current position.
+ */
+func (ctx *Context) ReadPause() error {
+
+	code := C.av_read_pause(ctx.CAVFormatContext)
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
 }
 
 func (ctx *Context) WriteFrame(pkt *avcodec.Packet) error {
