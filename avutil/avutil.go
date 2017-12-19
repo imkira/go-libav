@@ -55,6 +55,15 @@ package avutil
 //  return AVERROR(e);
 //}
 //
+// uint8_t ** alloc_data_array(size_t linesize, int channels)
+// {
+// 	// malloc()
+// 	uint8_t **arr = av_malloc_array(8, sizeof(uint8_t));
+// 	for (int i=0; i < channels; i++) {
+// 		arr[i] = av_mallocz(linesize);
+// 	}
+//     return arr;
+// }
 // #cgo LDFLAGS: -lavutil
 import "C"
 
@@ -788,7 +797,7 @@ func (f *Frame) GetBufferWithAlignment(alignment int) error {
 }
 
 func (f *Frame) Data(index int) unsafe.Pointer {
-	return unsafe.Pointer(f.CAVFrame.data[index])
+	return unsafe.Pointer(&f.CAVFrame.data[index])
 }
 
 func (f *Frame) SetData(index int, data unsafe.Pointer) {
@@ -1407,6 +1416,8 @@ func boolToCInt(b bool) C.int {
 
 type AudioFifo struct {
 	CAudioFifo *C.struct_AVAudioFifo
+	SampleFmt  SampleFormat
+	Channels   int
 }
 
 /**
@@ -1421,10 +1432,10 @@ type AudioFifo struct {
 func NewAudioFifo(sf SampleFormat, channels, nb_samples int) (*AudioFifo, error) {
 	//*av_audio_fifo_alloc(enum AVSampleFormat sample_fmt, int channels, int nb_samples);
 	if channels == 0 {
-		return nil, errors.New("Can't allocate new fife with 0 channels")
+		return nil, errors.New("Can't allocate new fifo with 0 channels")
 	}
 	if nb_samples == 0 {
-		return nil, errors.New("Can't allocate new fife with 0 samples")
+		return nil, errors.New("Can't allocate new fifo with 0 samples")
 	}
 	cName := C.CString(sf.Name())
 	defer C.free(unsafe.Pointer(cName))
@@ -1433,7 +1444,10 @@ func NewAudioFifo(sf SampleFormat, channels, nb_samples int) (*AudioFifo, error)
 	if cAudioFifo == nil {
 		return nil, ErrAllocationError
 	}
-	return NewAudioFifoFromC(unsafe.Pointer(cAudioFifo)), nil
+	fifo := NewAudioFifoFromC(unsafe.Pointer(cAudioFifo))
+	fifo.SampleFmt = sf
+	fifo.Channels = channels
+	return fifo, nil
 }
 
 func NewAudioFifoFromC(cFifo unsafe.Pointer) *AudioFifo {
@@ -1475,7 +1489,7 @@ func (a *AudioFifo) Write(data unsafe.Pointer, nb_samples int) (int, error) {
 			return 0, errors.New("No samples provided to write to Fifo")
 		}
 		cNbSamples := C.int(nb_samples)
-		cCode := C.av_audio_fifo_write(a.CAudioFifo, &data, cNbSamples)
+		cCode := C.av_audio_fifo_write(a.CAudioFifo, (*unsafe.Pointer)(data), cNbSamples)
 		if cCode < 0 {
 			return 0, NewErrorFromCode(ErrorCode(cCode))
 		} else {
@@ -1500,7 +1514,7 @@ func (a *AudioFifo) Write(data unsafe.Pointer, nb_samples int) (int, error) {
  *                    nb_samples if av_audio_fifo_size is less than nb_samples.
  */
 // int av_audio_fifo_peek(AVAudioFifo *af, void **data, int nb_samples);
-func (a *AudioFifo) Peek(maxSamples int) ([]C.uint8_t, error) {
+func (a *AudioFifo) Peek(maxSamples int) (*C.uint8_t, error) {
 	return a.PeekAt(maxSamples, 0)
 }
 
@@ -1520,16 +1534,17 @@ func (a *AudioFifo) Peek(maxSamples int) ([]C.uint8_t, error) {
  *                    nb_samples if av_audio_fifo_size is less than nb_samples.
  */
 // int av_audio_fifo_peek_at(AVAudioFifo *af, void **data, int nb_samples, int offset);
-func (a *AudioFifo) PeekAt(maxSamples, offset int) ([]C.uint8_t, error) {
-	data := []C.uint8_t{}
+func (a *AudioFifo) PeekAt(maxSamples, offset int) (*C.uint8_t, error) {
+	var data C.uint8_t
 	nb_samples := C.int(maxSamples)
 	c_offset := C.int(offset)
-	c_data := unsafe.Pointer(&data)
-	cCode := C.av_audio_fifo_peek_at(a.CAudioFifo, &c_data, nb_samples, c_offset)
+	tmp := unsafe.Pointer(&data)
+	c_data := &tmp
+	cCode := C.av_audio_fifo_peek_at(a.CAudioFifo, c_data, nb_samples, c_offset)
 	if cCode < 0 {
-		return data, NewErrorFromCode(ErrorCode(cCode))
+		return &data, NewErrorFromCode(ErrorCode(cCode))
 	} else {
-		return data, nil
+		return &data, nil
 	}
 }
 
@@ -1548,15 +1563,22 @@ func (a *AudioFifo) PeekAt(maxSamples, offset int) ([]C.uint8_t, error) {
  *                    nb_samples if av_audio_fifo_size is less than nb_samples.
  */
 // int av_audio_fifo_read(AVAudioFifo *af, void **data, int nb_samples);
-func (a *AudioFifo) Read(nb_samples int) ([]C.uint8_t, error) {
+func (a *AudioFifo) Read(nb_samples int) (unsafe.Pointer, int, error) {
 	cNbSamples := C.int(nb_samples)
-	data := []C.uint8_t{}
-	c_data := unsafe.Pointer(&data)
-	cCode := C.av_audio_fifo_read(a.CAudioFifo, &c_data, cNbSamples)
+	// Need to alloc this in c
+	// TODO fix this to not leak memory
+	size := nb_samples * a.SampleFmt.BytesPerSample()
+	cSize := (C.size_t)(size)
+	arr := C.alloc_data_array(cSize, C.int(a.Channels))
+	// log.Println(&arr)
+	// log.Println(arr)
+	data := unsafe.Pointer(arr)
+	cCode := C.av_audio_fifo_read(a.CAudioFifo, (*unsafe.Pointer)(data), cNbSamples)
 	if cCode < 0 {
-		return data, NewErrorFromCode(ErrorCode(cCode))
+		return unsafe.Pointer(arr), int(cCode), NewErrorFromCode(ErrorCode(cCode))
 	} else {
-		return data, nil
+		// log.Println("Pulled", cCode, "samples from queue")
+		return unsafe.Pointer(arr), int(cCode), nil
 	}
 }
 
