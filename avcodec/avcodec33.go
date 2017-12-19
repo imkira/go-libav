@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	ErrGotNoFrame = errors.New("avcodec: GotFrame == 0, this means we got no frame from the encoder")
+	ErrGotNoFrame  = errors.New("avcodec: GotFrame == 0, this means we got no frame from the encoder")
+	ErrGotNoPacket = errors.New("avcodec: GotPacket == 0, this means we got no packet from the encoder")
 )
 
 type CodecParameters struct {
@@ -92,7 +93,7 @@ func (ctx *Context) Decode(pkt *Packet) (bool, []*avutil.Frame, error) {
 }
 
 func (ctx *Context) Encode(pkt *Packet, frames []*avutil.Frame) (int, error) {
-	var cGotFrame C.int
+	var cGotPkt C.int
 	var cFrame *C.AVFrame
 	var code C.int
 	var frame *avutil.Frame
@@ -120,9 +121,9 @@ func (ctx *Context) Encode(pkt *Packet, frames []*avutil.Frame) (int, error) {
 	}
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 
-	cGotFrame = C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
-	if cGotFrame == (C.int)(0) {
-		return count, ErrGotNoFrame
+	cGotPkt = C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
+	if cGotPkt == (C.int)(0) {
+		return count, ErrGotNoPacket
 	}
 	return count, nil
 }
