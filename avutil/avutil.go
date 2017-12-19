@@ -196,6 +196,20 @@ func (sfmt SampleFormat) NameOk() (string, bool) {
 	return cStringToStringOk(C.av_get_sample_fmt_name((C.enum_AVSampleFormat)(sfmt)))
 }
 
+func (sfmt SampleFormat) Int() int {
+	return int(C.enum_AVSampleFormat(sfmt))
+}
+
+func (sfmt SampleFormat) BytesPerSample() int {
+	cBytes := C.av_get_bytes_per_sample(C.enum_AVSampleFormat(sfmt))
+	return int(cBytes)
+}
+
+func (sfmt SampleFormat) IsPlanar() bool {
+	cInt := C.av_sample_fmt_is_planar(C.enum_AVSampleFormat(sfmt))
+	return bool(cInt != 0)
+}
+
 type PixelFormat C.enum_AVPixelFormat
 
 const (
