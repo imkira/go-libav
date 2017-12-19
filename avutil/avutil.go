@@ -975,6 +975,30 @@ func (f *Frame) PacketDuration() int64 {
 	return int64(C.av_frame_get_pkt_duration(f.CAVFrame))
 }
 
+func (f *Frame) ChannelLayout() ChannelLayout {
+	return ChannelLayout(C.av_frame_get_channel_layout(f.CAVFrame))
+}
+
+func (f *Frame) SetChannelLayout(cl ChannelLayout) {
+	C.av_frame_set_channel_layout(f.CAVFrame, C.int64_t(cl))
+}
+
+func (f *Frame) SampleFormat() SampleFormat {
+	return SampleFormat(f.CAVFrame.format)
+}
+
+func (f *Frame) SetSampleFormat(sf SampleFormat) {
+	f.CAVFrame.format = (C.int)(sf)
+}
+
+func (f *Frame) SampleRate() int {
+	return int(C.av_frame_get_sample_rate(f.CAVFrame))
+}
+
+func (f *Frame) SetSampleRate(sr int) {
+	C.av_frame_set_sample_rate(f.CAVFrame, C.int(sr))
+}
+
 type OptionAccessor struct {
 	obj  unsafe.Pointer
 	fake bool
