@@ -55,15 +55,6 @@ package avutil
 //  return AVERROR(e);
 //}
 //
-// uint8_t ** alloc_data_array(size_t linesize, int channels)
-// {
-// 	// malloc()
-// 	uint8_t **arr = av_malloc_array(8, sizeof(uint8_t));
-// 	for (int i=0; i < channels; i++) {
-// 		arr[i] = av_mallocz(linesize);
-// 	}
-//     return arr;
-// }
 // #cgo LDFLAGS: -lavutil
 import "C"
 
@@ -799,9 +790,32 @@ func (f *Frame) Unref() {
 }
 
 func (f *Frame) GetBuffer() error {
-	return f.GetBufferWithAlignment(32)
+	return f.GetBufferWithAlignment(0)
 }
 
+/**
+ * Allocate new buffer(s) for audio or video data.
+ *
+ * The following fields must be set on frame before calling this function:
+ * - format (pixel format for video, sample format for audio)
+ * - width and height for video
+ * - nb_samples and channel_layout for audio
+ *
+ * This function will fill AVFrame.data and AVFrame.buf arrays and, if
+ * necessary, allocate and fill AVFrame.extended_data and AVFrame.extended_buf.
+ * For planar formats, one buffer will be allocated for each plane.
+ *
+ * @warning: if frame already has been allocated, calling this function will
+ *           leak memory. In addition, undefined behavior can occur in certain
+ *           cases.
+ *
+ * @param frame frame in which to store the new buffers.
+ * @param align Required buffer size alignment. If equal to 0, alignment will be
+ *              chosen automatically for the current CPU. It is highly
+ *              recommended to pass 0 here unless you know what you are doing.
+ *
+ * @return 0 on success, a negative AVERROR on error.
+ */
 func (f *Frame) GetBufferWithAlignment(alignment int) error {
 	code := C.av_frame_get_buffer(f.CAVFrame, C.int(alignment))
 	if code < 0 {
@@ -1453,9 +1467,9 @@ func boolToCInt(b bool) C.int {
 }
 
 type AudioFifo struct {
-	CAudioFifo *C.struct_AVAudioFifo
-	SampleFmt  SampleFormat
-	Channels   int
+	CAudioFifo    *C.struct_AVAudioFifo
+	SampleFmt     SampleFormat
+	ChannelLayout ChannelLayout
 }
 
 /**
@@ -1467,24 +1481,22 @@ type AudioFifo struct {
  * @return            newly allocated AVAudioFifo, or NULL on error
  */
 
-func NewAudioFifo(sf SampleFormat, channels, nb_samples int) (*AudioFifo, error) {
+func NewAudioFifo(sf SampleFormat, layout ChannelLayout, nb_samples int) (*AudioFifo, error) {
 	//*av_audio_fifo_alloc(enum AVSampleFormat sample_fmt, int channels, int nb_samples);
-	if channels == 0 {
-		return nil, errors.New("Can't allocate new fifo with 0 channels")
-	}
+
 	if nb_samples == 0 {
 		return nil, errors.New("Can't allocate new fifo with 0 samples")
 	}
 	cName := C.CString(sf.Name())
 	defer C.free(unsafe.Pointer(cName))
 	cSampleFormat := C.av_get_sample_fmt(cName)
-	cAudioFifo := C.av_audio_fifo_alloc(cSampleFormat, C.int(channels), C.int(nb_samples))
+	cAudioFifo := C.av_audio_fifo_alloc(cSampleFormat, C.int(layout.NumberOfChannels()), C.int(nb_samples))
 	if cAudioFifo == nil {
 		return nil, ErrAllocationError
 	}
 	fifo := NewAudioFifoFromC(unsafe.Pointer(cAudioFifo))
 	fifo.SampleFmt = sf
-	fifo.Channels = channels
+	fifo.ChannelLayout = layout
 	return fifo, nil
 }
 
@@ -1601,22 +1613,33 @@ func (a *AudioFifo) PeekAt(maxSamples, offset int) (*C.uint8_t, error) {
  *                    nb_samples if av_audio_fifo_size is less than nb_samples.
  */
 // int av_audio_fifo_read(AVAudioFifo *af, void **data, int nb_samples);
-func (a *AudioFifo) Read(nb_samples int) (unsafe.Pointer, int, error) {
+func (a *AudioFifo) Read(nb_samples int, frame *Frame) (int, error) {
 	cNbSamples := C.int(nb_samples)
 	// Need to alloc this in c
 	// TODO fix this to not leak memory
-	size := nb_samples * a.SampleFmt.BytesPerSample()
-	cSize := (C.size_t)(size)
-	arr := C.alloc_data_array(cSize, C.int(a.Channels))
+	// size := nb_samples * a.SampleFmt.BytesPerSample()
+	// cSize := (C.size_t)(size)
+	// arr := C.alloc_data_array(cSize, C.int(a.Channels))
 	// log.Println(&arr)
 	// log.Println(arr)
-	data := unsafe.Pointer(arr)
+	// data := unsafe.Pointer(arr)
+
+	// Make sure these are set correctly here
+	frame.SetSampleFormat(a.SampleFmt)
+	frame.SetChannelLayout(a.ChannelLayout)
+	frame.SetNumberOfSamples(nb_samples)
+	// Allocate the frame buffer
+	frame.GetBuffer()
+	data := unsafe.Pointer(&((*frame.CAVFrame).data))
 	cCode := C.av_audio_fifo_read(a.CAudioFifo, (*unsafe.Pointer)(data), cNbSamples)
 	if cCode < 0 {
-		return unsafe.Pointer(arr), int(cCode), NewErrorFromCode(ErrorCode(cCode))
+		return int(cCode), NewErrorFromCode(ErrorCode(cCode))
 	} else {
 		// log.Println("Pulled", cCode, "samples from queue")
-		return unsafe.Pointer(arr), int(cCode), nil
+		if nb_samples > int(cCode) {
+			frame.SetNumberOfSamples(int(cCode))
+		}
+		return int(cCode), nil
 	}
 }
 
