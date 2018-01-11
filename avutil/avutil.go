@@ -1564,8 +1564,8 @@ func (a *AudioFifo) Write(data unsafe.Pointer, nb_samples int) (int, error) {
  *                    nb_samples if av_audio_fifo_size is less than nb_samples.
  */
 // int av_audio_fifo_peek(AVAudioFifo *af, void **data, int nb_samples);
-func (a *AudioFifo) Peek(maxSamples int) (*C.uint8_t, error) {
-	return a.PeekAt(maxSamples, 0)
+func (a *AudioFifo) Peek(maxSamples int, frame *Frame) (int, error) {
+	return a.PeekAt(maxSamples, 0, frame)
 }
 
 /**
@@ -1584,17 +1584,27 @@ func (a *AudioFifo) Peek(maxSamples int) (*C.uint8_t, error) {
  *                    nb_samples if av_audio_fifo_size is less than nb_samples.
  */
 // int av_audio_fifo_peek_at(AVAudioFifo *af, void **data, int nb_samples, int offset);
-func (a *AudioFifo) PeekAt(maxSamples, offset int) (*C.uint8_t, error) {
-	var data C.uint8_t
-	nb_samples := C.int(maxSamples)
-	c_offset := C.int(offset)
-	tmp := unsafe.Pointer(&data)
-	c_data := &tmp
-	cCode := C.av_audio_fifo_peek_at(a.CAudioFifo, c_data, nb_samples, c_offset)
+func (a *AudioFifo) PeekAt(nb_samples, offset int, frame *Frame) (int, error) {
+	cNbSamples := C.int(nb_samples)
+	cOffset := C.int(offset)
+
+	// Make sure these are set correctly here
+	frame.SetSampleFormat(a.SampleFmt)
+	frame.SetChannelLayout(a.ChannelLayout)
+	frame.SetNumberOfSamples(nb_samples)
+	// Allocate the frame buffer
+	frame.GetBuffer()
+
+	data := unsafe.Pointer(&((*frame.CAVFrame).data))
+	cCode := C.av_audio_fifo_peek_at(a.CAudioFifo, (*unsafe.Pointer)(data), cNbSamples, cOffset)
 	if cCode < 0 {
-		return &data, NewErrorFromCode(ErrorCode(cCode))
+		return int(cCode), NewErrorFromCode(ErrorCode(cCode))
 	} else {
-		return &data, nil
+		// log.Println("Pulled", cCode, "samples from queue")
+		if cCode < cNbSamples {
+			frame.SetNumberOfSamples(int(cCode))
+		}
+		return int(cCode), nil
 	}
 }
 
@@ -1636,7 +1646,7 @@ func (a *AudioFifo) Read(nb_samples int, frame *Frame) (int, error) {
 		return int(cCode), NewErrorFromCode(ErrorCode(cCode))
 	} else {
 		// log.Println("Pulled", cCode, "samples from queue")
-		if nb_samples > int(cCode) {
+		if cCode < cNbSamples {
 			frame.SetNumberOfSamples(int(cCode))
 		}
 		return int(cCode), nil
