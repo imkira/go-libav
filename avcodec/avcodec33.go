@@ -1,5 +1,3 @@
-// +build ffmpeg33
-
 package avcodec
 
 //#include <libavutil/avutil.h>
