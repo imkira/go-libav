@@ -55,7 +55,7 @@ package avutil
 //  return AVERROR(e);
 //}
 //
-// #cgo LDFLAGS: -lavutil
+// #cgo LDFLAGS: -lavutil -lm
 import "C"
 
 import (
