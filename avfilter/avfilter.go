@@ -321,22 +321,16 @@ func (ctx *Context) WriteFrame(frame *avutil.Frame) error {
 	return nil
 }
 
-func (ctx *Context) GetFrame(frame *avutil.Frame) (bool, error) {
+func (ctx *Context) GetFrame(frame *avutil.Frame) error {
 	var cFrame *C.AVFrame
 	if frame != nil {
 		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	}
 	code := C.av_buffersink_get_frame(ctx.CAVFilterContext, cFrame)
 	if code < 0 {
-		switch avutil.ErrorCode(code) {
-		case avutil.ErrorCode(C.GO_AVERROR(C.EAGAIN)):
-			return false, nil
-		case avutil.ErrorCodeEOF:
-			return false, nil
-		}
-		return false, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return true, nil
+	return nil
 }
 
 func (ctx *Context) SetFrameSize(size uint) {
