@@ -62,9 +62,13 @@ func (ctx *Context) CopyTo(dst *Context) error {
 }
 
 func (ctx *Context) SendPacket(pkt *Packet) error {
-
-	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	code := C.avcodec_send_packet(ctx.CAVCodecContext, cPkt)
+	var code C.int
+	if pkt == nil {
+		code = C.avcodec_send_packet(ctx.CAVCodecContext, nil)
+	} else {
+		cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
+		code = C.avcodec_send_packet(ctx.CAVCodecContext, cPkt)
+	}
 	if code < 0 {
 		err := avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		return err
@@ -82,8 +86,13 @@ func (ctx *Context) ReceiveFrame(frame *avutil.Frame) error {
 }
 
 func (ctx *Context) SendFrame(frame *avutil.Frame) error {
-	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
-	code := C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
+	var code C.int
+	if frame == nil {
+		code = C.avcodec_send_frame(ctx.CAVCodecContext, nil)
+	} else {
+		cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
+		code = C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
+	}
 	if code < 0 {
 		err := avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		return err
@@ -99,4 +108,8 @@ func (ctx *Context) ReceivePacket(pkt *Packet) error {
 		return err
 	}
 	return nil
+}
+
+func (ctx *Context) FlushBuffers() {
+	C.avcodec_flush_buffers(ctx.CAVCodecContext)
 }
