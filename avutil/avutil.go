@@ -997,6 +997,14 @@ func (f *Frame) SetChannelLayout(cl ChannelLayout) {
 	C.av_frame_set_channel_layout(f.CAVFrame, C.int64_t(cl))
 }
 
+func (f *Frame) Channels() int {
+	return int(C.av_frame_get_channels(f.CAVFrame))
+}
+
+func (f *Frame) SetChannels(n int) {
+	C.av_frame_set_channels(f.CAVFrame, C.int(n))
+}
+
 func (f *Frame) SampleFormat() SampleFormat {
 	return SampleFormat(f.CAVFrame.format)
 }
