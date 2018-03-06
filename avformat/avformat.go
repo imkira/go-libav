@@ -36,6 +36,10 @@ package avformat
 //typedef int (*AVFormatContextIOOpenCallback)(struct AVFormatContext *s, AVIOContext **pb, const char *url, int flags, AVDictionary **options);
 //typedef void (*AVFormatContextIOCloseCallback)(struct AVFormatContext *s, AVIOContext *pb);
 //
+// int exec_cb(av_format_control_message fn, AVFormatContext *s, int type, void *data, size_t data_size) {
+//   return fn(s, type, data, data_size);
+// }
+//
 // #cgo LDFLAGS: -lavformat -lavutil
 import "C"
 
@@ -899,6 +903,17 @@ func (ctx *Context) GuessFrameRate(stream *Stream, frame *avutil.Frame) *avutil.
 
 func (ctx *Context) SeekToTimestamp(streamIndex int, min, target, max int64, flags SeekFlags) error {
 	code := C.avformat_seek_file(ctx.CAVFormatContext, C.int(streamIndex), C.int64_t(min), C.int64_t(target), C.int64_t(max), C.int(flags))
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
+}
+
+func (ctx *Context) ControlMessage(msg int) error {
+	if ctx.Output() == nil {
+		return errors.New("No output found")
+	}
+	code := C.exec_cb(ctx.Output().CAVOutputFormat.control_message, ctx.CAVFormatContext, C.int(msg), nil, 0)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
