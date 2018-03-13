@@ -1,5 +1,6 @@
 package avformat
 
+//#include <stdint.h>
 //#include <libavutil/avutil.h>
 //#include <libavutil/avstring.h>
 //#include <libavcodec/avcodec.h>
@@ -39,12 +40,26 @@ package avformat
 // int exec_cb(av_format_control_message fn, AVFormatContext *s, int type, void *data, size_t data_size) {
 //   return fn(s, type, data, data_size);
 // }
+// int interrupt_cb(void* data) {
+//	return (intptr_t)data;
+// }
+// AVIOInterruptCB * alloc_interrupt_cb() {
+//	 AVIOInterruptCB * avioicb = malloc(sizeof(AVIOInterruptCB));
+//   avioicb->callback = interrupt_cb;
+//   avioicb->opaque = 0;
+//   return avioicb;
+// }
+// void set_interrupt_cb(AVFormatContext *c, AVIOInterruptCB *cb) {
+//	  c->interrupt_callback = *cb;
+//}
+//
 //
 // #cgo LDFLAGS: -lavformat -lavutil
 import "C"
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"time"
 	"unsafe"
@@ -57,6 +72,25 @@ var (
 	ErrAllocationError     = errors.New("allocation error")
 	ErrInvalidArgumentSize = errors.New("invalid argument size")
 )
+
+type IOInterruptCallback struct {
+	CAVIOInterruptCB *C.AVIOInterruptCB
+}
+
+func NewIOInterruptCallbackFromC(cb unsafe.Pointer) *IOInterruptCallback {
+	return &IOInterruptCallback{CAVIOInterruptCB: (*C.AVIOInterruptCB)(cb)}
+}
+
+func NewInterruptCallback() *IOInterruptCallback {
+	cInterrupt := C.alloc_interrupt_cb()
+	return NewIOInterruptCallbackFromC(unsafe.Pointer(cInterrupt))
+}
+
+func (ctx *Context) SetInterruptCallback(cb *IOInterruptCallback) {
+	if cb != nil {
+		C.set_interrupt_cb(ctx.CAVFormatContext, cb.CAVIOInterruptCB)
+	}
+}
 
 type Flags int
 
@@ -586,7 +620,12 @@ func NewContextForOutput(output *Output) (*Context, error) {
 }
 
 func NewContextFromC(cCtx unsafe.Pointer) *Context {
-	return &Context{CAVFormatContext: (*C.AVFormatContext)(cCtx)}
+	interrupt := NewInterruptCallback()
+	ctx := Context{
+		CAVFormatContext: (*C.AVFormatContext)(cCtx),
+	}
+	ctx.SetInterruptCallback(interrupt)
+	return &ctx
 }
 
 func (ctx *Context) Free() {
@@ -874,6 +913,7 @@ func (ctx *Context) FindStreamInfo(options []*avutil.Dictionary) error {
 		cOptions = newCAVDictionaryArrayFromDictionarySlice(options[:count])
 		defer freeCAVDictionaryArray(cOptions)
 	}
+	log.Println("Attempting to find stream information")
 	code := C.avformat_find_stream_info(ctx.CAVFormatContext, cOptions)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
@@ -920,6 +960,11 @@ func (ctx *Context) ControlMessage(msg int) error {
 	return nil
 }
 
+func (ctx *Context) InterruptFormatProbe() {
+	data := C.int(1)
+	ctx.CAVFormatContext.interrupt_callback.opaque = unsafe.Pointer(&data)
+}
+
 type IOContext struct {
 	CAVIOContext *C.AVIOContext
 }
@@ -959,14 +1004,6 @@ func (ctx *IOContext) Close() error {
 		}
 	}
 	return nil
-}
-
-type IOInterruptCallback struct {
-	CAVIOInterruptCB *C.AVIOInterruptCB
-}
-
-func NewIOInterruptCallbackFromC(cb unsafe.Pointer) *IOInterruptCallback {
-	return &IOInterruptCallback{CAVIOInterruptCB: (*C.AVIOInterruptCB)(cb)}
 }
 
 func boolToCInt(b bool) C.int {
