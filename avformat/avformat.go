@@ -53,7 +53,6 @@ import "C"
 
 import (
 	"errors"
-	"log"
 	"strings"
 	"time"
 	"unsafe"
@@ -899,7 +898,6 @@ func (ctx *Context) FindStreamInfo(options []*avutil.Dictionary) error {
 		cOptions = newCAVDictionaryArrayFromDictionarySlice(options[:count])
 		defer freeCAVDictionaryArray(cOptions)
 	}
-	log.Println("Attempting to find stream information")
 	code := C.avformat_find_stream_info(ctx.CAVFormatContext, cOptions)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
