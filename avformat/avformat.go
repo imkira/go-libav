@@ -1,6 +1,5 @@
 package avformat
 
-//#include <stdint.h>
 //#include <libavutil/avutil.h>
 //#include <libavutil/avstring.h>
 //#include <libavcodec/avcodec.h>
@@ -43,14 +42,9 @@ package avformat
 // int interrupt_cb(void* data) {
 //	return (intptr_t)data;
 // }
-// AVIOInterruptCB * alloc_interrupt_cb() {
-//	 AVIOInterruptCB * avioicb = malloc(sizeof(AVIOInterruptCB));
-//   avioicb->callback = interrupt_cb;
-//   avioicb->opaque = 0;
-//   return avioicb;
-// }
-// void set_interrupt_cb(AVFormatContext *c, AVIOInterruptCB *cb) {
-//	  c->interrupt_callback = *cb;
+// void set_interrupt_cb(AVFormatContext *c) {
+//	  c->interrupt_callback.callback = interrupt_cb;
+//	  c->interrupt_callback.opaque = 0;
 //}
 //
 //
@@ -81,15 +75,8 @@ func NewIOInterruptCallbackFromC(cb unsafe.Pointer) *IOInterruptCallback {
 	return &IOInterruptCallback{CAVIOInterruptCB: (*C.AVIOInterruptCB)(cb)}
 }
 
-func NewInterruptCallback() *IOInterruptCallback {
-	cInterrupt := C.alloc_interrupt_cb()
-	return NewIOInterruptCallbackFromC(unsafe.Pointer(cInterrupt))
-}
-
-func (ctx *Context) SetInterruptCallback(cb *IOInterruptCallback) {
-	if cb != nil {
-		C.set_interrupt_cb(ctx.CAVFormatContext, cb.CAVIOInterruptCB)
-	}
+func (ctx *Context) SetInterruptCallback() {
+	C.set_interrupt_cb(ctx.CAVFormatContext)
 }
 
 type Flags int
@@ -620,11 +607,10 @@ func NewContextForOutput(output *Output) (*Context, error) {
 }
 
 func NewContextFromC(cCtx unsafe.Pointer) *Context {
-	interrupt := NewInterruptCallback()
 	ctx := Context{
 		CAVFormatContext: (*C.AVFormatContext)(cCtx),
 	}
-	ctx.SetInterruptCallback(interrupt)
+	ctx.SetInterruptCallback()
 	return &ctx
 }
 
