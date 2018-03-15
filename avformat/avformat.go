@@ -944,7 +944,7 @@ func (ctx *Context) ControlMessage(msg int) error {
 	return nil
 }
 
-func (ctx *Context) InterruptFormatProbe() {
+func (ctx *Context) InterruptBlockingOperation() {
 	data := C.int(1)
 	ctx.CAVFormatContext.interrupt_callback.opaque = unsafe.Pointer(&data)
 }
