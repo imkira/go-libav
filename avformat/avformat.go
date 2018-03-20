@@ -933,11 +933,18 @@ func (ctx *Context) SeekToTimestamp(streamIndex int, min, target, max int64, fla
 	return nil
 }
 
-func (ctx *Context) ControlMessage(msg int) error {
+func (ctx *Context) ControlMessage(msg int, data interface{}) error {
 	if ctx.Output() == nil {
 		return errors.New("No output found")
 	}
-	code := C.exec_cb(ctx.Output().CAVOutputFormat.control_message, ctx.CAVFormatContext, C.int(msg), nil, 0)
+	pointer := unsafe.Pointer(nil)
+	if data != nil {
+		//Convert data to an unsafe pointer
+		cData := C.int(data.(int64))
+		pointer = unsafe.Pointer(&cData)
+	}
+
+	code := C.exec_cb(ctx.Output().CAVOutputFormat.control_message, ctx.CAVFormatContext, C.int(msg), pointer, 0)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
