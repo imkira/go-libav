@@ -940,7 +940,7 @@ func (ctx *Context) ControlMessage(msg int, data interface{}) error {
 	pointer := unsafe.Pointer(nil)
 	if data != nil {
 		//Convert data to an unsafe pointer
-		cData := C.int(data.(int64))
+		cData := C.int64_t(data.(int64))
 		pointer = unsafe.Pointer(&cData)
 	}
 
