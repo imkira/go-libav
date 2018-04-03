@@ -402,6 +402,16 @@ func (ctx *Context) FrameRate() *avutil.Rational {
 	return avutil.NewRationalFromC(unsafe.Pointer(&r))
 }
 
+func (ctx *Context) SendCommand(cmd, args string) error {
+	cmdString := C.CString(cmd)
+	argsString := C.CString(args)
+	code := C.avfilter_process_command(ctx.CAVFilterContext, cmdString, argsString, nil, 0, C.int(0))
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(int(code)))
+	}
+	return nil
+}
+
 type Graph struct {
 	CAVFilterGraph *C.AVFilterGraph
 }
