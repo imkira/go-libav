@@ -14,7 +14,7 @@ env:
 before_install:
   - echo $TRAVIS_GO_VERSION
   - go get -u golang.org/x/tools/cmd/cover
-  - "[[ $TRAVIS_GO_VERSION != 1.8* ]] || go get -u github.com/golang/lint/golint"
+  - "[[ $TRAVIS_GO_VERSION != 1.8* ]] || go get -u golang.org/x/lint/golint"
   - go get -u github.com/shirou/gopsutil
   - go get -u golang.org/x/sys/unix
   - sudo apt-get update
