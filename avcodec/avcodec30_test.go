@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/imkira/go-libav/avutil"
+	"github.com/baohavan/go-libav/avutil"
 )
 
 func TestNewBitStreamFilterContextFromName(t *testing.T) {

@@ -13,8 +13,8 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/imkira/go-libav/avcodec"
-	"github.com/imkira/go-libav/avutil"
+	"github.com/baohavan/go-libav/avcodec"
+	"github.com/baohavan/go-libav/avutil"
 )
 
 func ApplyBitstreamFilters(codecCtx *avcodec.Context, pkt *avcodec.Packet, filtersCtx *avcodec.BitStreamFilterContext) error {
