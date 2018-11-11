@@ -36,6 +36,10 @@ package avformat
 //typedef int (*AVFormatContextIOOpenCallback)(struct AVFormatContext *s, AVIOContext **pb, const char *url, int flags, AVDictionary **options);
 //typedef void (*AVFormatContextIOCloseCallback)(struct AVFormatContext *s, AVIOContext *pb);
 //
+//static void setInterruptOpaque(AVIOInterruptCB *cb, void *user_data) {
+//	cb->opaque = user_data;
+//}
+//
 // #cgo pkg-config: libavformat libavutil
 import "C"
 
@@ -577,6 +581,17 @@ func NewContextForOutput(output *Output) (*Context, error) {
 	return NewContextFromC(unsafe.Pointer(cCtx)), nil
 }
 
+func NewContextForOutput2(fmt string) (*Context, error) {
+	cFmt := C.CString(fmt)
+	defer C.free(unsafe.Pointer(cFmt))
+	var cCtx *C.AVFormatContext
+	code := C.avformat_alloc_output_context2(&cCtx, nil, cFmt, nil)
+	if code < 0 {
+		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return NewContextFromC(unsafe.Pointer(cCtx)), nil
+}
+
 func NewContextFromC(cCtx unsafe.Pointer) *Context {
 	return &Context{CAVFormatContext: (*C.AVFormatContext)(cCtx)}
 }
@@ -712,6 +727,11 @@ func (ctx *Context) Streams() []*Stream {
 		streams = append(streams, stream)
 	}
 	return streams
+}
+
+func (ctx *Context) StreamAt(i uint) *Stream {
+	cStream := C.go_av_streams_get(ctx.CAVFormatContext.streams, C.uint(i))
+	return NewStreamFromC(unsafe.Pointer(cStream))
 }
 
 func (ctx *Context) FileName() string {
@@ -875,7 +895,7 @@ type IOContext struct {
 	CAVIOContext *C.AVIOContext
 }
 
-func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *avutil.Dictionary) (*IOContext, error) {
+func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *avutil.Dictionary, pl unsafe.Pointer) (*IOContext, error) {
 	cURL := C.CString(url)
 	defer C.free(unsafe.Pointer(cURL))
 	var cCb *C.AVIOInterruptCB
@@ -887,6 +907,11 @@ func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *
 		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
 	var cCtx *C.AVIOContext
+	if cb != nil {
+		cCb = cb.CAVIOInterruptCB
+
+		C.setInterruptOpaque(cCb, pl)
+	}
 	code := C.avio_open2(&cCtx, cURL, (C.int)(flags), cCb, cOptions)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))

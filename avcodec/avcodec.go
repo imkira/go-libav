@@ -397,6 +397,26 @@ func (pkt *Packet) RescaleTime(srcTimeBase, dstTimeBase *avutil.Rational) {
 	C.av_packet_rescale_ts(pkt.CAVPacket, *src, *dst)
 }
 
+func (pkt *Packet) RescaleTime2(srcTimeBase, dstTimeBase *avutil.Rational) {
+	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
+	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
+
+	pkt.SetPTS(int64(C.av_rescale_q_rnd(pkt.CAVPacket.pts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
+	pkt.SetDTS(int64(C.av_rescale_q_rnd(pkt.CAVPacket.dts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
+	pkt.SetDuration(int64(C.av_rescale_q(pkt.CAVPacket.duration, *src, *dst)))
+	pkt.SetPosition(-1)
+}
+
+func (pkt *Packet) RescalePTS(pts int64, base *avutil.Rational) int64 {
+	src := (*C.AVRational)(unsafe.Pointer(&base.CAVRational))
+	return int64(C.av_rescale_q((C.int64_t)(pts), *src, C.AV_TIME_BASE_Q));
+}
+
+func (pkt *Packet) RescalePTS2(pts int64, base *avutil.Rational) int64 {
+	src := (*C.AVRational)(unsafe.Pointer(&base.CAVRational))
+	return int64(C.av_rescale_q((C.int64_t)(pts), C.AV_TIME_BASE_Q, *src));
+}
+
 func (pkt *Packet) PTS() int64 {
 	return int64(pkt.CAVPacket.pts)
 }
