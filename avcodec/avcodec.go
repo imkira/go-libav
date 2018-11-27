@@ -145,7 +145,7 @@ const (
 	CodecIDLJpeg CodecID = C.AV_CODEC_ID_LJPEG
 )
 
-type Flags int
+type Flags int64
 
 const (
 	FlagUnaligned     Flags = C.CODEC_FLAG_UNALIGNED
@@ -182,7 +182,7 @@ const (
 	Flag2SkipManual        Flags2 = C.CODEC_FLAG2_SKIP_MANUAL
 )
 
-type Capabilities int
+type Capabilities int64
 
 const (
 	CapabilityDrawHorizBand     Capabilities = C.CODEC_CAP_DRAW_HORIZ_BAND
