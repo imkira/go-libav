@@ -119,6 +119,7 @@ package avcodec
 // int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
 // int GO_AVCODEC_VERSION_MICRO = LIBAVCODEC_VERSION_MICRO;
 //
+// #cgo CFLAGS: -Wno-deprecated-declarations
 // #cgo pkg-config: libavcodec libavutil
 import "C"
 

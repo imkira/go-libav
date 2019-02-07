@@ -54,6 +54,7 @@ package avutil
 //  return AVERROR(e);
 //}
 //
+// #cgo CFLAGS: -Wno-deprecated-declarations
 // #cgo pkg-config: libavutil
 import "C"
 
