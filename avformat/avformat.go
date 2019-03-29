@@ -598,7 +598,7 @@ func NewContextFromC(cCtx unsafe.Pointer) *Context {
 
 func (ctx *Context) Free() {
 	if ctx.CAVFormatContext != nil {
-		defer C.avformat_free_context(ctx.CAVFormatContext)
+		C.avformat_free_context(ctx.CAVFormatContext)
 		ctx.CAVFormatContext = nil
 	}
 }
