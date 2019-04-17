@@ -450,54 +450,59 @@ func GuessOutputFromMimeType(mimeType string) *Output {
 }
 
 type Stream struct {
-	CAVStream *C.AVStream
+	//CAVStream *C.AVStream
+	CAVStream uintptr
 }
 
-func NewStreamFromC(cStream unsafe.Pointer) *Stream {
-	return &Stream{CAVStream: (*C.AVStream)(cStream)}
+func NewStreamFromC(cStream uintptr) *Stream {
+	return &Stream{CAVStream: cStream}
+}
+
+func (s *Stream) Stream() (*C.AVStream) {
+	return (*C.AVStream)(unsafe.Pointer(s.CAVStream))
 }
 
 func (s *Stream) Index() int {
-	return int(s.CAVStream.index)
+	return int(s.Stream().index)
 }
 
 func (s *Stream) ID() int {
-	return int(s.CAVStream.id)
+	return int(s.Stream().id)
 }
 
 func (s *Stream) CodecContext() *avcodec.Context {
-	if s.CAVStream.codec == nil {
+	if s.Stream().codec == nil {
 		return nil
 	}
-	return avcodec.NewContextFromC(unsafe.Pointer(s.CAVStream.codec))
+	return avcodec.NewContextFromC(unsafe.Pointer(s.Stream().codec))
 }
 
 func (s *Stream) TimeBase() *avutil.Rational {
-	tb := &s.CAVStream.time_base
+	tb := &s.Stream().time_base
 	return avutil.NewRational(int(tb.num), int(tb.den))
 }
 
 func (s *Stream) SetTimeBase(timeBase *avutil.Rational) {
-	s.CAVStream.time_base.num = (C.int)(timeBase.Numerator())
-	s.CAVStream.time_base.den = (C.int)(timeBase.Denominator())
+	s.Stream().time_base.num = (C.int)(timeBase.Numerator())
+	s.Stream().time_base.den = (C.int)(timeBase.Denominator())
 }
 
 func (s *Stream) SampleAspectRatio() *avutil.Rational {
-	sar := &s.CAVStream.sample_aspect_ratio
+	sar := &s.Stream().sample_aspect_ratio
 	return avutil.NewRational(int(sar.num), int(sar.den))
 }
 
 func (s *Stream) SetSampleAspectRatio(aspectRatio *avutil.Rational) {
-	s.CAVStream.sample_aspect_ratio.num = (C.int)(aspectRatio.Numerator())
-	s.CAVStream.sample_aspect_ratio.den = (C.int)(aspectRatio.Denominator())
+	s.Stream().sample_aspect_ratio.num = (C.int)(aspectRatio.Numerator())
+	s.Stream().sample_aspect_ratio.den = (C.int)(aspectRatio.Denominator())
 }
 
 func (s *Stream) StartTime() int64 {
-	return int64(s.CAVStream.start_time)
+	return int64(s.Stream().start_time)
 }
 
 func (s *Stream) RawDuration() int64 {
-	return int64(s.CAVStream.duration)
+	return int64(s.Stream().duration)
 }
 
 func (s *Stream) Duration() time.Duration {
@@ -506,19 +511,19 @@ func (s *Stream) Duration() time.Duration {
 }
 
 func (s *Stream) NumberOfFrames() int64 {
-	return int64(s.CAVStream.nb_frames)
+	return int64(s.Stream().nb_frames)
 }
 
 func (s *Stream) Disposition() Disposition {
-	return Disposition(s.CAVStream.disposition)
+	return Disposition(s.Stream().disposition)
 }
 
 func (s *Stream) SetDisposition(disposition Disposition) {
-	s.CAVStream.disposition = C.int(disposition)
+	s.Stream().disposition = C.int(disposition)
 }
 
 func (s *Stream) MetaData() *avutil.Dictionary {
-	return avutil.NewDictionaryFromC(unsafe.Pointer(&s.CAVStream.metadata))
+	return avutil.NewDictionaryFromC(unsafe.Pointer(&s.Stream().metadata))
 }
 
 func (s *Stream) SetMetaData(metaData *avutil.Dictionary) {
@@ -526,42 +531,43 @@ func (s *Stream) SetMetaData(metaData *avutil.Dictionary) {
 	if metaData != nil {
 		cMetaData = (*C.AVDictionary)(metaData.Value())
 	}
-	s.CAVStream.metadata = cMetaData
+	s.Stream().metadata = cMetaData
 }
 
 func (s *Stream) AverageFrameRate() *avutil.Rational {
-	return avutil.NewRationalFromC(unsafe.Pointer(&s.CAVStream.avg_frame_rate))
+	return avutil.NewRationalFromC(unsafe.Pointer(&s.Stream().avg_frame_rate))
 }
 
 func (s *Stream) SetAverageFrameRate(frameRate *avutil.Rational) {
-	s.CAVStream.avg_frame_rate.num = (C.int)(frameRate.Numerator())
-	s.CAVStream.avg_frame_rate.den = (C.int)(frameRate.Denominator())
+	s.Stream().avg_frame_rate.num = (C.int)(frameRate.Numerator())
+	s.Stream().avg_frame_rate.den = (C.int)(frameRate.Denominator())
 }
 
 func (s *Stream) RealFrameRate() *avutil.Rational {
-	r := C.av_stream_get_r_frame_rate(s.CAVStream)
+	r := C.av_stream_get_r_frame_rate(s.Stream())
 	return avutil.NewRationalFromC(unsafe.Pointer(&r))
 }
 
 func (s *Stream) SetRealFrameRate(frameRate *avutil.Rational) {
-	s.CAVStream.r_frame_rate.num = (C.int)(frameRate.Numerator())
-	s.CAVStream.r_frame_rate.den = (C.int)(frameRate.Denominator())
+	s.Stream().r_frame_rate.num = (C.int)(frameRate.Numerator())
+	s.Stream().r_frame_rate.den = (C.int)(frameRate.Denominator())
 }
 
 func (s *Stream) SetFirstDTS(firstDTS int64) {
-	s.CAVStream.first_dts = (C.int64_t)(firstDTS)
+	s.Stream().first_dts = (C.int64_t)(firstDTS)
 }
 
 func (s *Stream) FirstDTS() int64 {
-	return int64(s.CAVStream.first_dts)
+	return int64(s.Stream().first_dts)
 }
 
 func (s *Stream) EndPTS() int64 {
-	return int64(C.av_stream_get_end_pts(s.CAVStream))
+	return int64(C.av_stream_get_end_pts(s.Stream()))
 }
 
 type Context struct {
-	CAVFormatContext *C.AVFormatContext
+	//CAVFormatContext *C.AVFormatContext
+	CAVFormatContext uintptr
 }
 
 func NewContextForInput() (*Context, error) {
@@ -569,74 +575,81 @@ func NewContextForInput() (*Context, error) {
 	if cCtx == nil {
 		return nil, ErrAllocationError
 	}
-	return NewContextFromC(unsafe.Pointer(cCtx)), nil
+	return NewContextFromC(uintptr(unsafe.Pointer(cCtx))), nil
 }
 
 func NewContextForOutput(output *Output) (*Context, error) {
-	var cCtx *C.AVFormatContext
-	code := C.avformat_alloc_output_context2(&cCtx, output.CAVOutputFormat, nil, nil)
+	//var cCtx *C.AVFormatContext
+	var cCtx uintptr
+	code := C.avformat_alloc_output_context2((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), output.CAVOutputFormat, nil, nil)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return NewContextFromC(unsafe.Pointer(cCtx)), nil
+	return NewContextFromC(cCtx), nil
 }
 
 func NewContextForOutput2(fmt string) (*Context, error) {
 	cFmt := C.CString(fmt)
 	defer C.free(unsafe.Pointer(cFmt))
-	var cCtx *C.AVFormatContext
-	code := C.avformat_alloc_output_context2(&cCtx, nil, cFmt, nil)
+	//var cCtx *C.AVFormatContext
+	var cCtx uintptr
+	code := C.avformat_alloc_output_context2((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), nil, cFmt, nil)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return NewContextFromC(unsafe.Pointer(cCtx)), nil
+	return NewContextFromC(cCtx), nil
 }
 
-func NewContextFromC(cCtx unsafe.Pointer) *Context {
-	return &Context{CAVFormatContext: (*C.AVFormatContext)(cCtx)}
+func NewContextFromC(cCtx uintptr) *Context {
+	return &Context{CAVFormatContext: cCtx}
+}
+
+func (ctx *Context) FormatContext() *C.AVFormatContext {
+	return (*C.AVFormatContext)(unsafe.Pointer(ctx.CAVFormatContext))
 }
 
 func (ctx *Context) Free() {
-	if ctx.CAVFormatContext != nil {
-		C.avformat_free_context(ctx.CAVFormatContext)
-		ctx.CAVFormatContext = nil
+	if ctx.CAVFormatContext != 0 {
+		C.avformat_free_context((*C.AVFormatContext)(unsafe.Pointer(ctx.CAVFormatContext)))
+		ctx.CAVFormatContext = 0
 	}
 }
 
 func (ctx *Context) Class() *avutil.Class {
-	if ctx.CAVFormatContext.av_class == nil {
+	if ctx.FormatContext().av_class == nil {
 		return nil
 	}
-	return avutil.NewClassFromC(unsafe.Pointer(ctx.CAVFormatContext.av_class))
+	return avutil.NewClassFromC(unsafe.Pointer(ctx.FormatContext().av_class))
 }
 
 func (ctx *Context) Input() *Input {
-	if ctx.CAVFormatContext.iformat == nil {
+	if ctx.FormatContext().iformat == nil {
 		return nil
 	}
-	return NewInputFromC(unsafe.Pointer(ctx.CAVFormatContext.iformat))
+	return NewInputFromC(unsafe.Pointer(ctx.FormatContext().iformat))
 }
 
 func (ctx *Context) Output() *Output {
-	if ctx.CAVFormatContext.oformat == nil {
+	if ctx.FormatContext().oformat == nil {
 		return nil
 	}
-	return NewOutputFromC(unsafe.Pointer(ctx.CAVFormatContext.oformat))
+	return NewOutputFromC(unsafe.Pointer(ctx.FormatContext().oformat))
 }
 
 func (ctx *Context) IOContext() *IOContext {
-	if ctx.CAVFormatContext.pb == nil {
+	if ctx.FormatContext().pb == nil {
 		return nil
 	}
-	return NewIOContextFromC(unsafe.Pointer(ctx.CAVFormatContext.pb))
+	return NewIOContextFromC(uintptr(unsafe.Pointer(ctx.FormatContext().pb)))
 }
 
 func (ctx *Context) SetIOContext(ioCtx *IOContext) {
-	var cIOCtx *C.AVIOContext
+	//var cIOCtx *C.AVIOContext
+	var cIOCtx uintptr
 	if ioCtx != nil {
 		cIOCtx = ioCtx.CAVIOContext
 	}
-	ctx.CAVFormatContext.pb = cIOCtx
+	ctx.FormatContext().pb = (*C.AVIOContext)(unsafe.Pointer(cIOCtx))
 }
 
 func (ctx *Context) NewStream() (*Stream, error) {
@@ -648,15 +661,15 @@ func (ctx *Context) NewStreamWithCodec(codec *avcodec.Codec) (*Stream, error) {
 	if codec != nil {
 		cCodec = (*C.AVCodec)(unsafe.Pointer(codec.CAVCodec))
 	}
-	cStream := C.avformat_new_stream(ctx.CAVFormatContext, cCodec)
+	cStream := C.avformat_new_stream(ctx.FormatContext(), cCodec)
 	if cStream == nil {
 		return nil, ErrAllocationError
 	}
-	return NewStreamFromC(unsafe.Pointer(cStream)), nil
+	return NewStreamFromC(uintptr(unsafe.Pointer(cStream))), nil
 }
 
 func (ctx *Context) NumberOfStreams() uint {
-	return uint(ctx.CAVFormatContext.nb_streams)
+	return uint(ctx.FormatContext().nb_streams)
 }
 
 func (ctx *Context) WriteHeader(options *avutil.Dictionary) error {
@@ -664,7 +677,7 @@ func (ctx *Context) WriteHeader(options *avutil.Dictionary) error {
 	if options != nil {
 		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
-	code := C.avformat_write_header(ctx.CAVFormatContext, cOptions)
+	code := C.avformat_write_header(ctx.FormatContext(), cOptions)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -672,7 +685,7 @@ func (ctx *Context) WriteHeader(options *avutil.Dictionary) error {
 }
 
 func (ctx *Context) WriteTrailer() error {
-	code := C.av_write_trailer(ctx.CAVFormatContext)
+	code := C.av_write_trailer(ctx.FormatContext())
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -681,7 +694,7 @@ func (ctx *Context) WriteTrailer() error {
 
 func (ctx *Context) ReadFrame(pkt *avcodec.Packet) (bool, error) {
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	code := C.av_read_frame(ctx.CAVFormatContext, cPkt)
+	code := C.av_read_frame(ctx.FormatContext(), cPkt)
 	if code < 0 {
 		if avutil.ErrorCode(code) == avutil.ErrorCodeEOF {
 			return false, nil
@@ -696,7 +709,7 @@ func (ctx *Context) WriteFrame(pkt *avcodec.Packet) error {
 	if cPkt != nil {
 		cPkt = (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	}
-	code := C.av_write_frame(ctx.CAVFormatContext, cPkt)
+	code := C.av_write_frame(ctx.FormatContext(), cPkt)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -708,7 +721,7 @@ func (ctx *Context) InterleavedWriteFrame(pkt *avcodec.Packet) error {
 	if pkt != nil {
 		cPkt = (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	}
-	code := C.av_interleaved_write_frame(ctx.CAVFormatContext, cPkt)
+	code := C.av_interleaved_write_frame(ctx.FormatContext(), cPkt)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -722,78 +735,78 @@ func (ctx *Context) Streams() []*Stream {
 	}
 	streams := make([]*Stream, 0, count)
 	for i := uint(0); i < count; i++ {
-		cStream := C.go_av_streams_get(ctx.CAVFormatContext.streams, C.uint(i))
-		stream := NewStreamFromC(unsafe.Pointer(cStream))
+		cStream := C.go_av_streams_get(ctx.FormatContext().streams, C.uint(i))
+		stream := NewStreamFromC(uintptr(unsafe.Pointer(cStream)))
 		streams = append(streams, stream)
 	}
 	return streams
 }
 
 func (ctx *Context) StreamAt(i uint) *Stream {
-	cStream := C.go_av_streams_get(ctx.CAVFormatContext.streams, C.uint(i))
-	return NewStreamFromC(unsafe.Pointer(cStream))
+	cStream := C.go_av_streams_get(ctx.FormatContext().streams, C.uint(i))
+	return NewStreamFromC(uintptr(unsafe.Pointer(cStream)))
 }
 
 func (ctx *Context) FileName() string {
-	return C.GoString(&ctx.CAVFormatContext.filename[0])
+	return C.GoString(&ctx.FormatContext().filename[0])
 }
 
 func (ctx *Context) SetFileName(fileName string) {
 	cFileName := C.CString(fileName)
 	defer C.free(unsafe.Pointer(cFileName))
-	C.av_strlcpy(&ctx.CAVFormatContext.filename[0], cFileName, C.sizeOfAVFormatContextFilename)
+	C.av_strlcpy(&ctx.FormatContext().filename[0], cFileName, C.sizeOfAVFormatContextFilename)
 }
 
 func (ctx *Context) StartTime() int64 {
-	return int64(ctx.CAVFormatContext.start_time)
+	return int64(ctx.FormatContext().start_time)
 }
 
 func (ctx *Context) Duration() int64 {
-	return int64(ctx.CAVFormatContext.duration)
+	return int64(ctx.FormatContext().duration)
 }
 
 func (ctx *Context) SetDuration(duration int64) {
-	ctx.CAVFormatContext.duration = (C.int64_t)(duration)
+	ctx.FormatContext().duration = (C.int64_t)(duration)
 }
 
 func (ctx *Context) BitRate() int64 {
-	return int64(ctx.CAVFormatContext.bit_rate)
+	return int64(ctx.FormatContext().bit_rate)
 }
 
 func (ctx *Context) MaxDelay() int {
-	return int(ctx.CAVFormatContext.max_delay)
+	return int(ctx.FormatContext().max_delay)
 }
 
 func (ctx *Context) SetMaxDelay(maxDelay int) {
-	ctx.CAVFormatContext.max_delay = (C.int)(maxDelay)
+	ctx.FormatContext().max_delay = (C.int)(maxDelay)
 }
 
 func (ctx *Context) Flags() ContextFlags {
-	return ContextFlags(ctx.CAVFormatContext.flags)
+	return ContextFlags(ctx.FormatContext().flags)
 }
 
 func (ctx *Context) SetFlags(flags ContextFlags) {
-	ctx.CAVFormatContext.flags = (C.int)(flags)
+	ctx.FormatContext().flags = (C.int)(flags)
 }
 
 func (ctx *Context) ExtraFlags() ContextExtraFlags {
-	return ContextExtraFlags(ctx.CAVFormatContext.ctx_flags)
+	return ContextExtraFlags(ctx.FormatContext().ctx_flags)
 }
 
 func (ctx *Context) AudioCodecID() avcodec.CodecID {
-	return (avcodec.CodecID)(ctx.CAVFormatContext.audio_codec_id)
+	return (avcodec.CodecID)(ctx.FormatContext().audio_codec_id)
 }
 
 func (ctx *Context) VideoCodecID() avcodec.CodecID {
-	return (avcodec.CodecID)(ctx.CAVFormatContext.video_codec_id)
+	return (avcodec.CodecID)(ctx.FormatContext().video_codec_id)
 }
 
 func (ctx *Context) SubtitleCodecID() avcodec.CodecID {
-	return (avcodec.CodecID)(ctx.CAVFormatContext.subtitle_codec_id)
+	return (avcodec.CodecID)(ctx.FormatContext().subtitle_codec_id)
 }
 
 func (ctx *Context) MetaData() *avutil.Dictionary {
-	return avutil.NewDictionaryFromC(unsafe.Pointer(&ctx.CAVFormatContext.metadata))
+	return avutil.NewDictionaryFromC(unsafe.Pointer(&ctx.FormatContext().metadata))
 }
 
 func (ctx *Context) SetMetaData(metaData *avutil.Dictionary) {
@@ -801,27 +814,27 @@ func (ctx *Context) SetMetaData(metaData *avutil.Dictionary) {
 	if metaData != nil {
 		cMetaData = (*C.AVDictionary)(metaData.Value())
 	}
-	ctx.CAVFormatContext.metadata = cMetaData
+	ctx.FormatContext().metadata = cMetaData
 }
 
 func (ctx *Context) DataCodecID() avcodec.CodecID {
-	return (avcodec.CodecID)(ctx.CAVFormatContext.data_codec_id)
+	return (avcodec.CodecID)(ctx.FormatContext().data_codec_id)
 }
 
 func (ctx *Context) IOOpenCallback() unsafe.Pointer {
-	return unsafe.Pointer(ctx.CAVFormatContext.io_open)
+	return unsafe.Pointer(ctx.FormatContext().io_open)
 }
 
 func (ctx *Context) SetIOOpenCallback(callback unsafe.Pointer) {
-	ctx.CAVFormatContext.io_open = (C.AVFormatContextIOOpenCallback)(callback)
+	ctx.FormatContext().io_open = (C.AVFormatContextIOOpenCallback)(callback)
 }
 
 func (ctx *Context) IOCloseCallback() unsafe.Pointer {
-	return unsafe.Pointer(ctx.CAVFormatContext.io_close)
+	return unsafe.Pointer(ctx.FormatContext().io_close)
 }
 
 func (ctx *Context) SetIOCloseCallback(callback unsafe.Pointer) {
-	ctx.CAVFormatContext.io_close = (C.AVFormatContextIOCloseCallback)(callback)
+	ctx.FormatContext().io_close = (C.AVFormatContextIOCloseCallback)(callback)
 }
 
 func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dictionary) error {
@@ -835,7 +848,9 @@ func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dic
 	if options != nil {
 		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
-	code := C.avformat_open_input(&ctx.CAVFormatContext, cFileName, cInput, cOptions)
+	var cCtx uintptr
+	code := C.avformat_open_input((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), cFileName, cInput, cOptions)
+	ctx.CAVFormatContext = cCtx
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -843,7 +858,8 @@ func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dic
 }
 
 func (ctx *Context) CloseInput() {
-	C.avformat_close_input(&ctx.CAVFormatContext)
+	cCtx := ctx.FormatContext()
+	C.avformat_close_input((**C.AVFormatContext)(&cCtx))
 }
 
 func (ctx *Context) FindStreamInfo(options []*avutil.Dictionary) error {
@@ -856,7 +872,7 @@ func (ctx *Context) FindStreamInfo(options []*avutil.Dictionary) error {
 		cOptions = newCAVDictionaryArrayFromDictionarySlice(options[:count])
 		defer freeCAVDictionaryArray(cOptions)
 	}
-	code := C.avformat_find_stream_info(ctx.CAVFormatContext, cOptions)
+	code := C.avformat_find_stream_info(ctx.FormatContext(), cOptions)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -870,7 +886,7 @@ func (ctx *Context) Dump(streamIndex int, url string, isOutput bool) {
 	}
 	cURL := C.CString(url)
 	defer C.free(unsafe.Pointer(cURL))
-	C.av_dump_format(ctx.CAVFormatContext, C.int(streamIndex), cURL, cIsOutput)
+	C.av_dump_format(ctx.FormatContext(), C.int(streamIndex), cURL, cIsOutput)
 }
 
 func (ctx *Context) GuessFrameRate(stream *Stream, frame *avutil.Frame) *avutil.Rational {
@@ -879,12 +895,12 @@ func (ctx *Context) GuessFrameRate(stream *Stream, frame *avutil.Frame) *avutil.
 	if frame != nil {
 		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	}
-	r := C.av_guess_frame_rate(ctx.CAVFormatContext, cStream, cFrame)
+	r := C.av_guess_frame_rate(ctx.FormatContext(), cStream, cFrame)
 	return avutil.NewRationalFromC(unsafe.Pointer(&r))
 }
 
 func (ctx *Context) SeekToTimestamp(streamIndex int, min, target, max int64, flags SeekFlags) error {
-	code := C.avformat_seek_file(ctx.CAVFormatContext, C.int(streamIndex), C.int64_t(min), C.int64_t(target), C.int64_t(max), C.int(flags))
+	code := C.avformat_seek_file(ctx.FormatContext(), C.int(streamIndex), C.int64_t(min), C.int64_t(target), C.int64_t(max), C.int(flags))
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -892,15 +908,21 @@ func (ctx *Context) SeekToTimestamp(streamIndex int, min, target, max int64, fla
 }
 
 type IOContext struct {
-	CAVIOContext *C.AVIOContext
+	//CAVIOContext *C.AVIOContext
+	CAVIOContext uintptr
 }
+
+func (ctx *IOContext) IOContext() *C.AVIOContext {
+	return (*C.AVIOContext)(unsafe.Pointer(ctx.CAVIOContext))
+}
+
 
 func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *avutil.Dictionary, pl unsafe.Pointer) (*IOContext, error) {
 	cURL := C.CString(url)
 	defer C.free(unsafe.Pointer(cURL))
 	var cCb *C.AVIOInterruptCB
 	if cb != nil {
-		cCb = cb.CAVIOInterruptCB
+		cCb = (*C.AVIOInterruptCB)(unsafe.Pointer(cb.CAVIOInterruptCB))
 	}
 	var cOptions **C.AVDictionary
 	if options != nil {
@@ -908,7 +930,7 @@ func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *
 	}
 	var cCtx *C.AVIOContext
 	if cb != nil {
-		cCb = cb.CAVIOInterruptCB
+		cCb = (*C.AVIOInterruptCB)(unsafe.Pointer(cb.CAVIOInterruptCB))
 
 		C.setInterruptOpaque(cCb, pl)
 	}
@@ -916,20 +938,21 @@ func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return NewIOContextFromC(unsafe.Pointer(cCtx)), nil
+	return NewIOContextFromC(uintptr(unsafe.Pointer(cCtx))), nil
 }
 
-func NewIOContextFromC(cCtx unsafe.Pointer) *IOContext {
-	return &IOContext{CAVIOContext: (*C.AVIOContext)(cCtx)}
+func NewIOContextFromC(cCtx uintptr) *IOContext {
+	return &IOContext{CAVIOContext: cCtx}
 }
 
 func (ctx *IOContext) Size() int64 {
-	return int64(C.avio_size(ctx.CAVIOContext))
+	return int64(C.avio_size(ctx.IOContext()))
 }
 
 func (ctx *IOContext) Close() error {
-	if ctx.CAVIOContext != nil {
-		code := C.avio_closep(&ctx.CAVIOContext)
+	if ctx.CAVIOContext != 0 {
+		cIOCtx := ctx.IOContext()
+		code := C.avio_closep(&cIOCtx)
 		if code < 0 {
 			return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		}
@@ -938,11 +961,12 @@ func (ctx *IOContext) Close() error {
 }
 
 type IOInterruptCallback struct {
-	CAVIOInterruptCB *C.AVIOInterruptCB
+	//CAVIOInterruptCB *C.AVIOInterruptCB
+	CAVIOInterruptCB uintptr
 }
 
-func NewIOInterruptCallbackFromC(cb unsafe.Pointer) *IOInterruptCallback {
-	return &IOInterruptCallback{CAVIOInterruptCB: (*C.AVIOInterruptCB)(cb)}
+func NewIOInterruptCallbackFromC(cb uintptr) *IOInterruptCallback {
+	return &IOInterruptCallback{CAVIOInterruptCB: cb}
 }
 
 func boolToCInt(b bool) C.int {

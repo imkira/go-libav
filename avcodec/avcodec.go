@@ -352,27 +352,33 @@ func (psd *PacketSideData) SetType(t PacketSideDataType) {
 }
 
 type Packet struct {
-	CAVPacket *C.AVPacket
+	//CAVPacket *C.AVPacket
+	CAVPacket uintptr
 }
 
 func NewPacket() (*Packet, error) {
-	cPkt := (*C.AVPacket)(C.av_packet_alloc())
+	cPkt := C.av_packet_alloc()
 	if cPkt == nil {
 		return nil, ErrAllocationError
 	}
-	return NewPacketFromC(unsafe.Pointer(cPkt)), nil
+	return NewPacketFromC(uintptr(unsafe.Pointer(cPkt))), nil
 }
 
-func NewPacketFromC(cPkt unsafe.Pointer) *Packet {
-	return &Packet{CAVPacket: (*C.AVPacket)(cPkt)}
+func NewPacketFromC(cPkt uintptr) *Packet {
+	return &Packet{CAVPacket: cPkt}
+}
+
+func (pkt *Packet) Packet() *C.AVPacket {
+	return (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 }
 
 func (pkt *Packet) Free() {
-	C.av_packet_free(&pkt.CAVPacket)
+	cPkt := pkt.Packet()
+	C.av_packet_free((**C.AVPacket)(&cPkt))
 }
 
 func (pkt *Packet) Ref(dst *Packet) error {
-	code := C.av_packet_ref(dst.CAVPacket, pkt.CAVPacket)
+	code := C.av_packet_ref(dst.Packet(), pkt.Packet())
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -380,30 +386,30 @@ func (pkt *Packet) Ref(dst *Packet) error {
 }
 
 func (pkt *Packet) Unref() {
-	C.av_packet_unref(pkt.CAVPacket)
+	C.av_packet_unref(pkt.Packet())
 }
 
 func (pkt *Packet) ConsumeData(size int) {
-	data := unsafe.Pointer(pkt.CAVPacket.data)
+	data := unsafe.Pointer(pkt.Packet().data)
 	if data != nil {
-		pkt.CAVPacket.size -= C.int(size)
-		pkt.CAVPacket.data = (*C.uint8_t)(unsafe.Pointer(uintptr(data) + uintptr(size)))
+		pkt.Packet().size -= C.int(size)
+		pkt.Packet().data = (*C.uint8_t)(unsafe.Pointer(uintptr(data) + uintptr(size)))
 	}
 }
 
 func (pkt *Packet) RescaleTime(srcTimeBase, dstTimeBase *avutil.Rational) {
 	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
 	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
-	C.av_packet_rescale_ts(pkt.CAVPacket, *src, *dst)
+	C.av_packet_rescale_ts(pkt.Packet(), *src, *dst)
 }
 
 func (pkt *Packet) RescaleTime2(srcTimeBase, dstTimeBase *avutil.Rational) {
 	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
 	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
 
-	pkt.SetPTS(int64(C.av_rescale_q_rnd(pkt.CAVPacket.pts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
-	pkt.SetDTS(int64(C.av_rescale_q_rnd(pkt.CAVPacket.dts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
-	pkt.SetDuration(int64(C.av_rescale_q(pkt.CAVPacket.duration, *src, *dst)))
+	pkt.SetPTS(int64(C.av_rescale_q_rnd(pkt.Packet().pts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
+	pkt.SetDTS(int64(C.av_rescale_q_rnd(pkt.Packet().dts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
+	pkt.SetDuration(int64(C.av_rescale_q(pkt.Packet().duration, *src, *dst)))
 	pkt.SetPosition(-1)
 }
 
@@ -418,53 +424,53 @@ func (pkt *Packet) RescalePTS2(pts int64, base *avutil.Rational) int64 {
 }
 
 func (pkt *Packet) PTS() int64 {
-	return int64(pkt.CAVPacket.pts)
+	return int64(pkt.Packet().pts)
 }
 
 func (pkt *Packet) SetPTS(pts int64) {
-	pkt.CAVPacket.pts = (C.int64_t)(pts)
+	pkt.Packet().pts = (C.int64_t)(pts)
 }
 
 func (pkt *Packet) DTS() int64 {
-	return int64(pkt.CAVPacket.dts)
+	return int64(pkt.Packet().dts)
 }
 
 func (pkt *Packet) SetDTS(dts int64) {
-	pkt.CAVPacket.dts = (C.int64_t)(dts)
+	pkt.Packet().dts = (C.int64_t)(dts)
 }
 
 func (pkt *Packet) Duration() int64 {
-	return int64(pkt.CAVPacket.duration)
+	return int64(pkt.Packet().duration)
 }
 
 func (pkt *Packet) SetDuration(duration int64) {
-	pkt.CAVPacket.duration = (C.int64_t)(duration)
+	pkt.Packet().duration = (C.int64_t)(duration)
 }
 
 func (pkt *Packet) Data() unsafe.Pointer {
-	return unsafe.Pointer(pkt.CAVPacket.data)
+	return unsafe.Pointer(pkt.Packet().data)
 }
 
 func (pkt *Packet) SetData(data unsafe.Pointer) {
-	pkt.CAVPacket.data = (*C.uint8_t)(data)
+	pkt.Packet().data = (*C.uint8_t)(data)
 }
 
 func (pkt *Packet) Size() int {
-	return int(pkt.CAVPacket.size)
+	return int(pkt.Packet().size)
 }
 
 func (pkt *Packet) SetSize(size int) {
-	pkt.CAVPacket.size = (C.int)(size)
+	pkt.Packet().size = (C.int)(size)
 }
 
 func (pkt *Packet) SideData() []*PacketSideData {
-	count := int(pkt.CAVPacket.side_data_elems)
+	count := int(pkt.Packet().side_data_elems)
 	if count <= 0 {
 		return nil
 	}
 	psds := make([]*PacketSideData, 0, count)
 	for i := 0; i < count; i++ {
-		cPSD := C.go_av_packetsidedata_get(pkt.CAVPacket.side_data, C.int(i))
+		cPSD := C.go_av_packetsidedata_get(pkt.Packet().side_data, C.int(i))
 		psd := NewPacketSideDataFromC(unsafe.Pointer(cPSD))
 		psds = append(psds, psd)
 	}
@@ -472,35 +478,35 @@ func (pkt *Packet) SideData() []*PacketSideData {
 }
 
 func (pkt *Packet) StreamIndex() int {
-	return int(pkt.CAVPacket.stream_index)
+	return int(pkt.Packet().stream_index)
 }
 
 func (pkt *Packet) SetStreamIndex(streamIndex int) {
-	pkt.CAVPacket.stream_index = (C.int)(streamIndex)
+	pkt.Packet().stream_index = (C.int)(streamIndex)
 }
 
 func (pkt *Packet) Flags() PacketFlags {
-	return PacketFlags(pkt.CAVPacket.flags)
+	return PacketFlags(pkt.Packet().flags)
 }
 
 func (pkt *Packet) SetFlags(flags PacketFlags) {
-	pkt.CAVPacket.flags = (C.int)(flags)
+	pkt.Packet().flags = (C.int)(flags)
 }
 
 func (pkt *Packet) Position() int64 {
-	return int64(pkt.CAVPacket.pos)
+	return int64(pkt.Packet().pos)
 }
 
 func (pkt *Packet) SetPosition(position int64) {
-	pkt.CAVPacket.pos = (C.int64_t)(position)
+	pkt.Packet().pos = (C.int64_t)(position)
 }
 
 func (pkt *Packet) ConvergenceDuration() int64 {
-	return int64(pkt.CAVPacket.convergence_duration)
+	return int64(pkt.Packet().convergence_duration)
 }
 
 func (pkt *Packet) SetConvergenceDuration(convergenceDuration int64) {
-	pkt.CAVPacket.convergence_duration = (C.int64_t)(convergenceDuration)
+	pkt.Packet().convergence_duration = (C.int64_t)(convergenceDuration)
 }
 
 type Profile struct {
