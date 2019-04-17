@@ -961,12 +961,11 @@ func (ctx *IOContext) Close() error {
 }
 
 type IOInterruptCallback struct {
-	//CAVIOInterruptCB *C.AVIOInterruptCB
-	CAVIOInterruptCB uintptr
+	CAVIOInterruptCB *C.AVIOInterruptCB
 }
 
-func NewIOInterruptCallbackFromC(cb uintptr) *IOInterruptCallback {
-	return &IOInterruptCallback{CAVIOInterruptCB: cb}
+func NewIOInterruptCallbackFromC(cb unsafe.Pointer) *IOInterruptCallback {
+	return &IOInterruptCallback{CAVIOInterruptCB: (*C.AVIOInterruptCB)(cb)}
 }
 
 func boolToCInt(b bool) C.int {
