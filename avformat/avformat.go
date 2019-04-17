@@ -860,6 +860,7 @@ func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dic
 func (ctx *Context) CloseInput() {
 	cCtx := ctx.FormatContext()
 	C.avformat_close_input((**C.AVFormatContext)(&cCtx))
+	ctx.CAVFormatContext = 0
 }
 
 func (ctx *Context) FindStreamInfo(options []*avutil.Dictionary) error {
