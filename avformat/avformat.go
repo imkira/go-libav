@@ -600,7 +600,7 @@ func NewContextForOutput2(fmt string) (*Context, error) {
 	defer C.free(unsafe.Pointer(cFmt))
 	//var cCtx *C.AVFormatContext
 	var cCtx uintptr
-	code := C.go_avformat_alloc_output_context2(unsafe.Pointer(cCtx), nil, cFmt, nil)
+	code := C.go_avformat_alloc_output_context2(unsafe.Pointer(&cCtx), nil, cFmt, nil)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
