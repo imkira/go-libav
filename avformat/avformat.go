@@ -40,6 +40,10 @@ package avformat
 //	cb->opaque = user_data;
 //}
 //
+//static void go_avformat_close_input(void *pCtx) {
+//	avformat_close_input((AVFormatContext**)(&pCtx));
+//}
+//
 // #cgo pkg-config: libavformat libavutil
 import "C"
 
@@ -858,8 +862,7 @@ func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dic
 }
 
 func (ctx *Context) CloseInput() {
-	cCtx := ctx.FormatContext()
-	C.avformat_close_input((**C.AVFormatContext)(&cCtx))
+	C.go_avformat_close_input(unsafe.Pointer(ctx.CAVFormatContext))
 	ctx.CAVFormatContext = 0
 }
 

@@ -115,6 +115,10 @@ package avcodec
 //  return list[idx];
 //}
 //
+//static void go_av_packet_free(void *pPkt) {
+//	av_packet_free((AVPacket**)&pPkt);
+//}
+//
 // int GO_AVCODEC_VERSION_MAJOR = LIBAVCODEC_VERSION_MAJOR;
 // int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
 // int GO_AVCODEC_VERSION_MICRO = LIBAVCODEC_VERSION_MICRO;
@@ -373,8 +377,7 @@ func (pkt *Packet) Packet() *C.AVPacket {
 }
 
 func (pkt *Packet) Free() {
-	cPkt := pkt.Packet()
-	C.av_packet_free((**C.AVPacket)(&cPkt))
+	C.go_av_packet_free(unsafe.Pointer(pkt.CAVPacket))
 }
 
 func (pkt *Packet) Ref(dst *Packet) error {
