@@ -43,6 +43,9 @@ package avformat
 //static void go_avformat_close_input(void *pCtx) {
 //	avformat_close_input((AVFormatContext**)(&pCtx));
 //}
+//static int go_avformat_alloc_output_context2(void *pCtx, void *pFormat, const char *format_name, const char *filename) {
+//	return avformat_alloc_output_context2((AVFormatContext**)(&pCtx), pFormat, format_name, filename);
+//}
 //
 // #cgo pkg-config: libavformat libavutil
 import "C"
@@ -582,22 +585,22 @@ func NewContextForInput() (*Context, error) {
 	return NewContextFromC(uintptr(unsafe.Pointer(cCtx))), nil
 }
 
-func NewContextForOutput(output *Output) (*Context, error) {
-	//var cCtx *C.AVFormatContext
-	var cCtx uintptr
-	code := C.avformat_alloc_output_context2((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), output.CAVOutputFormat, nil, nil)
-	if code < 0 {
-		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
-	}
-	return NewContextFromC(cCtx), nil
-}
+//func NewContextForOutput(output *Output) (*Context, error) {
+//	//var cCtx *C.AVFormatContext
+//	var cCtx uintptr
+//	code := C.avformat_alloc_output_context2((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), output.CAVOutputFormat, nil, nil)
+//	if code < 0 {
+//		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+//	}
+//	return NewContextFromC(cCtx), nil
+//}
 
 func NewContextForOutput2(fmt string) (*Context, error) {
 	cFmt := C.CString(fmt)
 	defer C.free(unsafe.Pointer(cFmt))
 	//var cCtx *C.AVFormatContext
 	var cCtx uintptr
-	code := C.avformat_alloc_output_context2((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), nil, cFmt, nil)
+	code := C.go_avformat_alloc_output_context2(unsafe.Pointer(cCtx), nil, cFmt, nil)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
