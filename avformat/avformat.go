@@ -44,7 +44,7 @@ package avformat
 //	avformat_close_input((AVFormatContext**)(&pCtx));
 //}
 //static int go_avformat_alloc_output_context2(void *pCtx, void *pFormat, const char *format_name, const char *filename) {
-//	return avformat_alloc_output_context2((AVFormatContext**)(&pCtx), pFormat, format_name, filename);
+//	return avformat_alloc_output_context2((AVFormatContext**)(pCtx), pFormat, format_name, filename);
 //}
 //
 // #cgo pkg-config: libavformat libavutil
