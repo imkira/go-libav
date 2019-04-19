@@ -53,6 +53,10 @@ package avutil
 //{
 //  return AVERROR(e);
 //}
+//static const int go_av_dict_set(AVDictionary *m, const char *key, const char *value, int flags)
+//{
+//	return av_dict_set(&m, key, value, flags);
+//}
 //
 // #cgo pkg-config: libavutil
 import "C"
@@ -479,19 +483,21 @@ func strError(code C.int) string {
 var _ error = (*Error)(nil)
 
 type Dictionary struct {
-	CAVDictionary  **C.AVDictionary
-	pCAVDictionary *C.AVDictionary
+	//CAVDictionary  **C.AVDictionary
+	//pCAVDictionary *C.AVDictionary
+	CAVDictionary uintptr
 }
 
 func NewDictionary() *Dictionary {
-	return NewDictionaryFromC(nil)
+	return NewDictionaryFromC(0)
 }
 
-func NewDictionaryFromC(cDictionary unsafe.Pointer) *Dictionary {
-	return &Dictionary{CAVDictionary: (**C.AVDictionary)(cDictionary)}
+func NewDictionaryFromC(cDictionary uintptr) *Dictionary {
+	return &Dictionary{CAVDictionary: cDictionary}
 }
 
 func (dict *Dictionary) Free() {
+	//C.av_dict_free(dict.pointer())
 	C.av_dict_free(dict.pointer())
 }
 
@@ -500,10 +506,11 @@ func (dict *Dictionary) Pointer() unsafe.Pointer {
 }
 
 func (dict *Dictionary) pointer() **C.AVDictionary {
-	if dict.CAVDictionary != nil {
-		return dict.CAVDictionary
-	}
-	return &dict.pCAVDictionary
+	//if dict.CAVDictionary != 0 {
+	//	return (**C.AVDictionary)(unsafe.Pointer(&dict.CAVDictionary))
+	//}
+	//return &dict.pCAVDictionary
+	return (**C.AVDictionary)(unsafe.Pointer(&dict.CAVDictionary))
 }
 
 func (dict *Dictionary) Value() unsafe.Pointer {
@@ -511,10 +518,11 @@ func (dict *Dictionary) Value() unsafe.Pointer {
 }
 
 func (dict *Dictionary) value() *C.AVDictionary {
-	if dict.CAVDictionary != nil {
-		return *dict.CAVDictionary
+	if dict.CAVDictionary != 0 {
+		return (*C.AVDictionary)(unsafe.Pointer(dict.CAVDictionary))
 	}
-	return dict.pCAVDictionary
+	//return dict.pCAVDictionary
+	return nil
 }
 
 func (dict *Dictionary) has(key string, flags C.int) bool {
@@ -928,11 +936,11 @@ func (f *Frame) SetOpaque(opaque unsafe.Pointer) {
 }
 
 func (f *Frame) Metadata() *Dictionary {
-	dict := C.av_frame_get_metadata(f.CAVFrame)
-	if dict == nil {
-		return nil
-	}
-	return NewDictionaryFromC(unsafe.Pointer(&dict))
+	dict := uintptr(unsafe.Pointer(C.av_frame_get_metadata(f.CAVFrame)))
+	//if dict == nil {
+	//	return nil
+	//}
+	return NewDictionaryFromC(dict)
 }
 
 func (f *Frame) SetMetadata(dict *Dictionary) {

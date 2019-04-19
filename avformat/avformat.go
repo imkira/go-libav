@@ -534,7 +534,7 @@ func (s *Stream) SetDisposition(disposition Disposition) {
 }
 
 func (s *Stream) MetaData() *avutil.Dictionary {
-	return avutil.NewDictionaryFromC(unsafe.Pointer(&s.Stream().metadata))
+	return avutil.NewDictionaryFromC(uintptr(unsafe.Pointer(&s.Stream().metadata)))
 }
 
 func (s *Stream) SetMetaData(metaData *avutil.Dictionary) {
@@ -819,7 +819,7 @@ func (ctx *Context) SubtitleCodecID() avcodec.CodecID {
 }
 
 func (ctx *Context) MetaData() *avutil.Dictionary {
-	return avutil.NewDictionaryFromC(unsafe.Pointer(&ctx.FormatContext().metadata))
+	return avutil.NewDictionaryFromC(uintptr(unsafe.Pointer(&ctx.FormatContext().metadata)))
 }
 
 func (ctx *Context) SetMetaData(metaData *avutil.Dictionary) {
