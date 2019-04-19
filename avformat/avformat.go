@@ -43,12 +43,12 @@ package avformat
 //static void go_avformat_close_input(void *pCtx) {
 //	avformat_close_input((AVFormatContext**)(&pCtx));
 //}
-//static int go_avformat_alloc_output_context2(void *pCtx, void *pFormat, const char *format_name, const char *filename) {
-//	AVFormatContext *ofmt_ctx = NULL;
-//	int ret = avformat_alloc_output_context2(&ofmt_ctx, pFormat, format_name, filename);
-//	AVFormatContext **ppCtx = pCtx;
-//  *ppCtx = ofmt_ctx;
-//	return ret;
+//static int go_avformat_alloc_output_context2(AVFormatContext **ctx, AVOutputFormat *oformat, const char *format_name, const char *filename) {
+//	return avformat_alloc_output_context2(ctx, oformat, format_name, filename);
+//}
+//
+//static int go_avformat_open_input(AVFormatContext *ps, const char *filename, AVInputFormat *fmt, AVDictionary **options) {
+//	return avformat_open_input(&ps, filename, fmt, options);
 //}
 //
 // #cgo pkg-config: libavformat libavutil
@@ -582,11 +582,11 @@ type Context struct {
 }
 
 func NewContextForInput() (*Context, error) {
-	cCtx := C.avformat_alloc_context()
-	if cCtx == nil {
+	cCtx := uintptr(unsafe.Pointer(C.avformat_alloc_context()))
+	if cCtx == 0 {
 		return nil, ErrAllocationError
 	}
-	return NewContextFromC(uintptr(unsafe.Pointer(cCtx))), nil
+	return NewContextFromC(cCtx), nil
 }
 
 //func NewContextForOutput(output *Output) (*Context, error) {
@@ -599,12 +599,14 @@ func NewContextForInput() (*Context, error) {
 //	return NewContextFromC(cCtx), nil
 //}
 
-func NewContextForOutput2(fmt string) (*Context, error) {
+func NewContextForOutput2(fmt, fn string) (*Context, error) {
 	cFmt := C.CString(fmt)
 	defer C.free(unsafe.Pointer(cFmt))
+	cFn := C.CString(fn)
+	defer C.free(unsafe.Pointer(cFn))
 	//var cCtx *C.AVFormatContext
 	var cCtx uintptr
-	code := C.go_avformat_alloc_output_context2(unsafe.Pointer(&cCtx), nil, cFmt, nil)
+	code := C.go_avformat_alloc_output_context2((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), nil, cFmt, cFn)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -621,7 +623,7 @@ func (ctx *Context) FormatContext() *C.AVFormatContext {
 
 func (ctx *Context) Free() {
 	if ctx.CAVFormatContext != 0 {
-		C.avformat_free_context((*C.AVFormatContext)(unsafe.Pointer(ctx.CAVFormatContext)))
+		C.avformat_free_context(ctx.FormatContext())
 		ctx.CAVFormatContext = 0
 	}
 }
@@ -859,9 +861,7 @@ func (ctx *Context) OpenInput(fileName string, input *Input, options *avutil.Dic
 	if options != nil {
 		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
-	var cCtx uintptr
-	code := C.avformat_open_input((**C.AVFormatContext)(unsafe.Pointer(&cCtx)), cFileName, cInput, cOptions)
-	ctx.CAVFormatContext = cCtx
+	code := C.go_avformat_open_input(ctx.FormatContext(), cFileName, cInput, cOptions)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
