@@ -361,8 +361,8 @@ type Packet struct {
 }
 
 func NewPacket() (*Packet, error) {
-	cPkt := C.av_packet_alloc()
-	if cPkt == nil {
+	cPkt := uintptr(unsafe.Pointer(C.av_packet_alloc()))
+	if cPkt == 0 {
 		return nil, ErrAllocationError
 	}
 	return NewPacketFromC(uintptr(unsafe.Pointer(cPkt))), nil
@@ -534,54 +534,59 @@ func (p *Profile) ID() int {
 }
 
 type Codec struct {
-	CAVCodec *C.AVCodec
+	//CAVCodec *C.AVCodec
+	CAVCodec uintptr
 }
 
-func NewCodecFromC(cCodec unsafe.Pointer) *Codec {
-	return &Codec{CAVCodec: (*C.AVCodec)(cCodec)}
+func NewCodecFromC(cCodec uintptr) *Codec {
+	return &Codec{CAVCodec: cCodec}
 }
 
 func FindEncoderByID(codecID CodecID) *Codec {
-	cCodec := C.avcodec_find_encoder((C.enum_AVCodecID)(codecID))
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_encoder((C.enum_AVCodecID)(codecID))))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func FindEncoderByName(name string) *Codec {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	cCodec := C.avcodec_find_encoder_by_name(cName)
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_encoder_by_name(cName)))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func FindDecoderByID(codecID CodecID) *Codec {
-	cCodec := C.avcodec_find_decoder((C.enum_AVCodecID)(codecID))
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_decoder((C.enum_AVCodecID)(codecID))))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func FindDecoderByName(name string) *Codec {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	cCodec := C.avcodec_find_decoder_by_name(cName)
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_decoder_by_name(cName)))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func (c *Codec) PrivateClass() *avutil.Class {
-	if c.CAVCodec.priv_class == nil {
+	if c.Codec().priv_class == nil {
 		return nil
 	}
-	return avutil.NewClassFromC(unsafe.Pointer(c.CAVCodec.priv_class))
+	return avutil.NewClassFromC(unsafe.Pointer(c.Codec().priv_class))
+}
+
+func (c *Codec) Codec() *C.AVCodec {
+	return (*C.AVCodec)(unsafe.Pointer(c.CAVCodec))
 }
 
 func (c *Codec) Name() string {
@@ -590,25 +595,25 @@ func (c *Codec) Name() string {
 }
 
 func (c *Codec) NameOk() (string, bool) {
-	return cStringToStringOk(c.CAVCodec.name)
+	return cStringToStringOk(c.Codec().name)
 }
 
 func (c *Codec) Type() avutil.MediaType {
-	return (avutil.MediaType)(c.CAVCodec._type)
+	return (avutil.MediaType)(c.Codec()._type)
 }
 
 func (c *Codec) ID() CodecID {
-	return CodecID(c.CAVCodec.id)
+	return CodecID(c.Codec().id)
 }
 
 func (c *Codec) Capabilities() Capabilities {
-	return Capabilities(c.CAVCodec.capabilities)
+	return Capabilities(c.Codec().capabilities)
 }
 
 func (c *Codec) SupportedFrameRates() []*avutil.Rational {
 	var frameRates []*avutil.Rational
 	for i := 0; ; i++ {
-		cFrameRate := C.go_av_rational_get(c.CAVCodec.supported_framerates, C.int(i))
+		cFrameRate := C.go_av_rational_get(c.Codec().supported_framerates, C.int(i))
 		if cFrameRate == nil || (cFrameRate.num == 0 && cFrameRate.den == 0) {
 			break
 		}
@@ -621,7 +626,7 @@ func (c *Codec) SupportedFrameRates() []*avutil.Rational {
 func (c *Codec) SupportedPixelFormats() []avutil.PixelFormat {
 	var pixelFormats []avutil.PixelFormat
 	for i := 0; ; i++ {
-		cPixelFormat := C.go_av_pixfmt_get(c.CAVCodec.pix_fmts, C.int(i))
+		cPixelFormat := C.go_av_pixfmt_get(c.Codec().pix_fmts, C.int(i))
 		if cPixelFormat == nil {
 			break
 		}
@@ -637,7 +642,7 @@ func (c *Codec) SupportedPixelFormats() []avutil.PixelFormat {
 func (c *Codec) SupportedSampleRates() []int {
 	var sampleRates []int
 	for i := 0; ; i++ {
-		cSampleRate := C.go_av_int_get(c.CAVCodec.supported_samplerates, C.int(i))
+		cSampleRate := C.go_av_int_get(c.Codec().supported_samplerates, C.int(i))
 		if cSampleRate == nil {
 			break
 		}
@@ -653,7 +658,7 @@ func (c *Codec) SupportedSampleRates() []int {
 func (c *Codec) SupportedSampleFormats() []avutil.SampleFormat {
 	var sampleFormats []avutil.SampleFormat
 	for i := 0; ; i++ {
-		cSampleFormat := C.go_av_samplefmt_get(c.CAVCodec.sample_fmts, C.int(i))
+		cSampleFormat := C.go_av_samplefmt_get(c.Codec().sample_fmts, C.int(i))
 		if cSampleFormat == nil {
 			break
 		}
@@ -669,7 +674,7 @@ func (c *Codec) SupportedSampleFormats() []avutil.SampleFormat {
 func (c *Codec) SupportedChannelLayouts() []avutil.ChannelLayout {
 	var channelLayouts []avutil.ChannelLayout
 	for i := 0; ; i++ {
-		cChannelLayout := C.go_av_uint64_get(c.CAVCodec.channel_layouts, C.int(i))
+		cChannelLayout := C.go_av_uint64_get(c.Codec().channel_layouts, C.int(i))
 		if cChannelLayout == nil {
 			break
 		}
@@ -685,7 +690,7 @@ func (c *Codec) SupportedChannelLayouts() []avutil.ChannelLayout {
 func (c *Codec) Profiles() []*Profile {
 	var profiles []*Profile
 	for i := 0; ; i++ {
-		cProfile := C.go_av_profile_get(c.CAVCodec.profiles, C.int(i))
+		cProfile := C.go_av_profile_get(c.Codec().profiles, C.int(i))
 		if cProfile == nil || int(cProfile.profile) == ProfileUnknown {
 			break
 		}
@@ -701,7 +706,7 @@ func (c *Codec) ProfileName(id int) string {
 }
 
 func (c *Codec) ProfileNameOK(id int) (string, bool) {
-	return cStringToStringOk(C.av_get_profile_name(c.CAVCodec, (C.int)(id)))
+	return cStringToStringOk(C.av_get_profile_name(c.Codec(), (C.int)(id)))
 }
 
 type Context struct {
@@ -713,7 +718,7 @@ type Context struct {
 func NewContextWithCodec(codec *Codec) (*Context, error) {
 	var cCodec *C.AVCodec
 	if codec != nil {
-		cCodec = codec.CAVCodec
+		cCodec = codec.Codec()
 	}
 	cCtx := uintptr(unsafe.Pointer(C.avcodec_alloc_context3(cCodec)))
 	if cCtx == 0 {
@@ -749,7 +754,7 @@ func (ctx *Context) Open(options *avutil.Dictionary) error {
 func (ctx *Context) OpenWithCodec(codec *Codec, options *avutil.Dictionary) error {
 	var cCodec *C.AVCodec
 	if codec != nil {
-		cCodec = codec.CAVCodec
+		cCodec = codec.Codec()
 	}
 	var cOptions **C.AVDictionary
 	if options != nil {
@@ -801,13 +806,13 @@ func (ctx *Context) Codec() *Codec {
 	if ctx.CodeContext().codec == nil {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(ctx.CodeContext().codec))
+	return NewCodecFromC(uintptr(unsafe.Pointer(ctx.CodeContext().codec)))
 }
 
 func (ctx *Context) SetCodec(codec *Codec) {
 	var cCodec *C.AVCodec
 	if codec != nil {
-		cCodec = codec.CAVCodec
+		cCodec = codec.Codec()
 	}
 	ctx.CodeContext().codec = cCodec
 }
