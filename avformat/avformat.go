@@ -485,7 +485,7 @@ func (s *Stream) CodecContext() *avcodec.Context {
 	if s.Stream().codec == nil {
 		return nil
 	}
-	return avcodec.NewContextFromC(unsafe.Pointer(s.Stream().codec))
+	return avcodec.NewContextFromC(uintptr(unsafe.Pointer(s.Stream().codec)))
 }
 
 func (s *Stream) TimeBase() *avutil.Rational {
@@ -674,11 +674,11 @@ func (ctx *Context) NewStreamWithCodec(codec *avcodec.Codec) (*Stream, error) {
 	if codec != nil {
 		cCodec = (*C.AVCodec)(unsafe.Pointer(codec.CAVCodec))
 	}
-	cStream := C.avformat_new_stream(ctx.FormatContext(), cCodec)
-	if cStream == nil {
+	cStream := uintptr(unsafe.Pointer(C.avformat_new_stream(ctx.FormatContext(), cCodec)))
+	if cStream == 0 {
 		return nil, ErrAllocationError
 	}
-	return NewStreamFromC(uintptr(unsafe.Pointer(cStream))), nil
+	return NewStreamFromC(cStream), nil
 }
 
 func (ctx *Context) NumberOfStreams() uint {
@@ -939,17 +939,17 @@ func OpenIOContext(url string, flags IOFlags, cb *IOInterruptCallback, options *
 	if options != nil {
 		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
-	var cCtx *C.AVIOContext
+	var cCtx uintptr
 	if cb != nil {
 		cCb = (*C.AVIOInterruptCB)(unsafe.Pointer(cb.CAVIOInterruptCB))
 
 		C.setInterruptOpaque(cCb, pl)
 	}
-	code := C.avio_open2(&cCtx, cURL, (C.int)(flags), cCb, cOptions)
+	code := C.avio_open2((**C.AVIOContext)(unsafe.Pointer(&cCtx)), cURL, (C.int)(flags), cCb, cOptions)
 	if code < 0 {
 		return nil, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return NewIOContextFromC(uintptr(unsafe.Pointer(cCtx))), nil
+	return NewIOContextFromC(cCtx), nil
 }
 
 func NewIOContextFromC(cCtx uintptr) *IOContext {

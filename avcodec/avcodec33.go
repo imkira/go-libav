@@ -42,11 +42,11 @@ func (ctx *Context) CopyTo(dst *Context) error {
 	}
 	defer parameters.Free()
 	cParams := (*C.AVCodecParameters)(unsafe.Pointer(parameters.CAVCodecParameters))
-	code := C.avcodec_parameters_from_context(cParams, ctx.CAVCodecContext)
+	code := C.avcodec_parameters_from_context(cParams, ctx.CodeContext())
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	code = C.avcodec_parameters_to_context(dst.CAVCodecContext, cParams)
+	code = C.avcodec_parameters_to_context(dst.CodeContext(), cParams)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -56,8 +56,8 @@ func (ctx *Context) CopyTo(dst *Context) error {
 func (ctx *Context) DecodeVideo(pkt *Packet, frame *avutil.Frame) (bool, int, error) {
 	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	C.avcodec_send_packet(ctx.CAVCodecContext, cPkt)
-	code := C.avcodec_receive_frame(ctx.CAVCodecContext, cFrame)
+	C.avcodec_send_packet(ctx.CodeContext(), cPkt)
+	code := C.avcodec_receive_frame(ctx.CodeContext(), cFrame)
 	var err error
 	if code < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
@@ -69,8 +69,8 @@ func (ctx *Context) DecodeVideo(pkt *Packet, frame *avutil.Frame) (bool, int, er
 func (ctx *Context) DecodeAudio(pkt *Packet, frame *avutil.Frame) (bool, int, error) {
 	cFrame := (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	C.avcodec_send_packet(ctx.CAVCodecContext, cPkt)
-	code := C.avcodec_receive_frame(ctx.CAVCodecContext, cFrame)
+	C.avcodec_send_packet(ctx.CodeContext(), cPkt)
+	code := C.avcodec_receive_frame(ctx.CodeContext(), cFrame)
 	var err error
 	if code < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
@@ -86,8 +86,8 @@ func (ctx *Context) EncodeVideo(pkt *Packet, frame *avutil.Frame) (bool, error) 
 		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	}
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	code := C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
-	C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
+	code := C.avcodec_send_frame(ctx.CodeContext(), cFrame)
+	C.avcodec_receive_packet(ctx.CodeContext(), cPkt)
 	var err error
 	if code < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
@@ -102,8 +102,8 @@ func (ctx *Context) EncodeAudio(pkt *Packet, frame *avutil.Frame) (bool, error) 
 		cFrame = (*C.AVFrame)(unsafe.Pointer(frame.CAVFrame))
 	}
 	cPkt := (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
-	code := C.avcodec_send_frame(ctx.CAVCodecContext, cFrame)
-	C.avcodec_receive_packet(ctx.CAVCodecContext, cPkt)
+	code := C.avcodec_send_frame(ctx.CodeContext(), cFrame)
+	C.avcodec_receive_packet(ctx.CodeContext(), cPkt)
 	var err error
 	if code < 0 {
 		err = avutil.NewErrorFromCode(avutil.ErrorCode(code))
