@@ -115,6 +115,10 @@ package avcodec
 //  return list[idx];
 //}
 //
+//static void go_av_packet_free(void *pPkt) {
+//	av_packet_free((AVPacket**)&pPkt);
+//}
+//
 // int GO_AVCODEC_VERSION_MAJOR = LIBAVCODEC_VERSION_MAJOR;
 // int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
 // int GO_AVCODEC_VERSION_MICRO = LIBAVCODEC_VERSION_MICRO;
@@ -352,27 +356,32 @@ func (psd *PacketSideData) SetType(t PacketSideDataType) {
 }
 
 type Packet struct {
-	CAVPacket *C.AVPacket
+	//CAVPacket *C.AVPacket
+	CAVPacket uintptr
 }
 
 func NewPacket() (*Packet, error) {
-	cPkt := (*C.AVPacket)(C.av_packet_alloc())
-	if cPkt == nil {
+	cPkt := uintptr(unsafe.Pointer(C.av_packet_alloc()))
+	if cPkt == 0 {
 		return nil, ErrAllocationError
 	}
-	return NewPacketFromC(unsafe.Pointer(cPkt)), nil
+	return NewPacketFromC(uintptr(unsafe.Pointer(cPkt))), nil
 }
 
-func NewPacketFromC(cPkt unsafe.Pointer) *Packet {
-	return &Packet{CAVPacket: (*C.AVPacket)(cPkt)}
+func NewPacketFromC(cPkt uintptr) *Packet {
+	return &Packet{CAVPacket: cPkt}
+}
+
+func (pkt *Packet) Packet() *C.AVPacket {
+	return (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 }
 
 func (pkt *Packet) Free() {
-	C.av_packet_free(&pkt.CAVPacket)
+	C.go_av_packet_free(unsafe.Pointer(pkt.CAVPacket))
 }
 
 func (pkt *Packet) Ref(dst *Packet) error {
-	code := C.av_packet_ref(dst.CAVPacket, pkt.CAVPacket)
+	code := C.av_packet_ref(dst.Packet(), pkt.Packet())
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -380,30 +389,30 @@ func (pkt *Packet) Ref(dst *Packet) error {
 }
 
 func (pkt *Packet) Unref() {
-	C.av_packet_unref(pkt.CAVPacket)
+	C.av_packet_unref(pkt.Packet())
 }
 
 func (pkt *Packet) ConsumeData(size int) {
-	data := unsafe.Pointer(pkt.CAVPacket.data)
+	data := unsafe.Pointer(pkt.Packet().data)
 	if data != nil {
-		pkt.CAVPacket.size -= C.int(size)
-		pkt.CAVPacket.data = (*C.uint8_t)(unsafe.Pointer(uintptr(data) + uintptr(size)))
+		pkt.Packet().size -= C.int(size)
+		pkt.Packet().data = (*C.uint8_t)(unsafe.Pointer(uintptr(data) + uintptr(size)))
 	}
 }
 
 func (pkt *Packet) RescaleTime(srcTimeBase, dstTimeBase *avutil.Rational) {
 	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
 	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
-	C.av_packet_rescale_ts(pkt.CAVPacket, *src, *dst)
+	C.av_packet_rescale_ts(pkt.Packet(), *src, *dst)
 }
 
 func (pkt *Packet) RescaleTime2(srcTimeBase, dstTimeBase *avutil.Rational) {
 	src := (*C.AVRational)(unsafe.Pointer(&srcTimeBase.CAVRational))
 	dst := (*C.AVRational)(unsafe.Pointer(&dstTimeBase.CAVRational))
 
-	pkt.SetPTS(int64(C.av_rescale_q_rnd(pkt.CAVPacket.pts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
-	pkt.SetDTS(int64(C.av_rescale_q_rnd(pkt.CAVPacket.dts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
-	pkt.SetDuration(int64(C.av_rescale_q(pkt.CAVPacket.duration, *src, *dst)))
+	pkt.SetPTS(int64(C.av_rescale_q_rnd(pkt.Packet().pts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
+	pkt.SetDTS(int64(C.av_rescale_q_rnd(pkt.Packet().dts, *src, *dst, C.AV_ROUND_NEAR_INF|C.AV_ROUND_PASS_MINMAX)))
+	pkt.SetDuration(int64(C.av_rescale_q(pkt.Packet().duration, *src, *dst)))
 	pkt.SetPosition(-1)
 }
 
@@ -418,53 +427,53 @@ func (pkt *Packet) RescalePTS2(pts int64, base *avutil.Rational) int64 {
 }
 
 func (pkt *Packet) PTS() int64 {
-	return int64(pkt.CAVPacket.pts)
+	return int64(pkt.Packet().pts)
 }
 
 func (pkt *Packet) SetPTS(pts int64) {
-	pkt.CAVPacket.pts = (C.int64_t)(pts)
+	pkt.Packet().pts = (C.int64_t)(pts)
 }
 
 func (pkt *Packet) DTS() int64 {
-	return int64(pkt.CAVPacket.dts)
+	return int64(pkt.Packet().dts)
 }
 
 func (pkt *Packet) SetDTS(dts int64) {
-	pkt.CAVPacket.dts = (C.int64_t)(dts)
+	pkt.Packet().dts = (C.int64_t)(dts)
 }
 
 func (pkt *Packet) Duration() int64 {
-	return int64(pkt.CAVPacket.duration)
+	return int64(pkt.Packet().duration)
 }
 
 func (pkt *Packet) SetDuration(duration int64) {
-	pkt.CAVPacket.duration = (C.int64_t)(duration)
+	pkt.Packet().duration = (C.int64_t)(duration)
 }
 
 func (pkt *Packet) Data() unsafe.Pointer {
-	return unsafe.Pointer(pkt.CAVPacket.data)
+	return unsafe.Pointer(pkt.Packet().data)
 }
 
 func (pkt *Packet) SetData(data unsafe.Pointer) {
-	pkt.CAVPacket.data = (*C.uint8_t)(data)
+	pkt.Packet().data = (*C.uint8_t)(data)
 }
 
 func (pkt *Packet) Size() int {
-	return int(pkt.CAVPacket.size)
+	return int(pkt.Packet().size)
 }
 
 func (pkt *Packet) SetSize(size int) {
-	pkt.CAVPacket.size = (C.int)(size)
+	pkt.Packet().size = (C.int)(size)
 }
 
 func (pkt *Packet) SideData() []*PacketSideData {
-	count := int(pkt.CAVPacket.side_data_elems)
+	count := int(pkt.Packet().side_data_elems)
 	if count <= 0 {
 		return nil
 	}
 	psds := make([]*PacketSideData, 0, count)
 	for i := 0; i < count; i++ {
-		cPSD := C.go_av_packetsidedata_get(pkt.CAVPacket.side_data, C.int(i))
+		cPSD := C.go_av_packetsidedata_get(pkt.Packet().side_data, C.int(i))
 		psd := NewPacketSideDataFromC(unsafe.Pointer(cPSD))
 		psds = append(psds, psd)
 	}
@@ -472,35 +481,35 @@ func (pkt *Packet) SideData() []*PacketSideData {
 }
 
 func (pkt *Packet) StreamIndex() int {
-	return int(pkt.CAVPacket.stream_index)
+	return int(pkt.Packet().stream_index)
 }
 
 func (pkt *Packet) SetStreamIndex(streamIndex int) {
-	pkt.CAVPacket.stream_index = (C.int)(streamIndex)
+	pkt.Packet().stream_index = (C.int)(streamIndex)
 }
 
 func (pkt *Packet) Flags() PacketFlags {
-	return PacketFlags(pkt.CAVPacket.flags)
+	return PacketFlags(pkt.Packet().flags)
 }
 
 func (pkt *Packet) SetFlags(flags PacketFlags) {
-	pkt.CAVPacket.flags = (C.int)(flags)
+	pkt.Packet().flags = (C.int)(flags)
 }
 
 func (pkt *Packet) Position() int64 {
-	return int64(pkt.CAVPacket.pos)
+	return int64(pkt.Packet().pos)
 }
 
 func (pkt *Packet) SetPosition(position int64) {
-	pkt.CAVPacket.pos = (C.int64_t)(position)
+	pkt.Packet().pos = (C.int64_t)(position)
 }
 
 func (pkt *Packet) ConvergenceDuration() int64 {
-	return int64(pkt.CAVPacket.convergence_duration)
+	return int64(pkt.Packet().convergence_duration)
 }
 
 func (pkt *Packet) SetConvergenceDuration(convergenceDuration int64) {
-	pkt.CAVPacket.convergence_duration = (C.int64_t)(convergenceDuration)
+	pkt.Packet().convergence_duration = (C.int64_t)(convergenceDuration)
 }
 
 type Profile struct {
@@ -525,54 +534,59 @@ func (p *Profile) ID() int {
 }
 
 type Codec struct {
-	CAVCodec *C.AVCodec
+	//CAVCodec *C.AVCodec
+	CAVCodec uintptr
 }
 
-func NewCodecFromC(cCodec unsafe.Pointer) *Codec {
-	return &Codec{CAVCodec: (*C.AVCodec)(cCodec)}
+func NewCodecFromC(cCodec uintptr) *Codec {
+	return &Codec{CAVCodec: cCodec}
 }
 
 func FindEncoderByID(codecID CodecID) *Codec {
-	cCodec := C.avcodec_find_encoder((C.enum_AVCodecID)(codecID))
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_encoder((C.enum_AVCodecID)(codecID))))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func FindEncoderByName(name string) *Codec {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	cCodec := C.avcodec_find_encoder_by_name(cName)
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_encoder_by_name(cName)))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func FindDecoderByID(codecID CodecID) *Codec {
-	cCodec := C.avcodec_find_decoder((C.enum_AVCodecID)(codecID))
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_decoder((C.enum_AVCodecID)(codecID))))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func FindDecoderByName(name string) *Codec {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	cCodec := C.avcodec_find_decoder_by_name(cName)
-	if cCodec == nil {
+	cCodec := uintptr(unsafe.Pointer(C.avcodec_find_decoder_by_name(cName)))
+	if cCodec == 0 {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(cCodec))
+	return NewCodecFromC(cCodec)
 }
 
 func (c *Codec) PrivateClass() *avutil.Class {
-	if c.CAVCodec.priv_class == nil {
+	if c.Codec().priv_class == nil {
 		return nil
 	}
-	return avutil.NewClassFromC(unsafe.Pointer(c.CAVCodec.priv_class))
+	return avutil.NewClassFromC(unsafe.Pointer(c.Codec().priv_class))
+}
+
+func (c *Codec) Codec() *C.AVCodec {
+	return (*C.AVCodec)(unsafe.Pointer(c.CAVCodec))
 }
 
 func (c *Codec) Name() string {
@@ -581,25 +595,25 @@ func (c *Codec) Name() string {
 }
 
 func (c *Codec) NameOk() (string, bool) {
-	return cStringToStringOk(c.CAVCodec.name)
+	return cStringToStringOk(c.Codec().name)
 }
 
 func (c *Codec) Type() avutil.MediaType {
-	return (avutil.MediaType)(c.CAVCodec._type)
+	return (avutil.MediaType)(c.Codec()._type)
 }
 
 func (c *Codec) ID() CodecID {
-	return CodecID(c.CAVCodec.id)
+	return CodecID(c.Codec().id)
 }
 
 func (c *Codec) Capabilities() Capabilities {
-	return Capabilities(c.CAVCodec.capabilities)
+	return Capabilities(c.Codec().capabilities)
 }
 
 func (c *Codec) SupportedFrameRates() []*avutil.Rational {
 	var frameRates []*avutil.Rational
 	for i := 0; ; i++ {
-		cFrameRate := C.go_av_rational_get(c.CAVCodec.supported_framerates, C.int(i))
+		cFrameRate := C.go_av_rational_get(c.Codec().supported_framerates, C.int(i))
 		if cFrameRate == nil || (cFrameRate.num == 0 && cFrameRate.den == 0) {
 			break
 		}
@@ -612,7 +626,7 @@ func (c *Codec) SupportedFrameRates() []*avutil.Rational {
 func (c *Codec) SupportedPixelFormats() []avutil.PixelFormat {
 	var pixelFormats []avutil.PixelFormat
 	for i := 0; ; i++ {
-		cPixelFormat := C.go_av_pixfmt_get(c.CAVCodec.pix_fmts, C.int(i))
+		cPixelFormat := C.go_av_pixfmt_get(c.Codec().pix_fmts, C.int(i))
 		if cPixelFormat == nil {
 			break
 		}
@@ -628,7 +642,7 @@ func (c *Codec) SupportedPixelFormats() []avutil.PixelFormat {
 func (c *Codec) SupportedSampleRates() []int {
 	var sampleRates []int
 	for i := 0; ; i++ {
-		cSampleRate := C.go_av_int_get(c.CAVCodec.supported_samplerates, C.int(i))
+		cSampleRate := C.go_av_int_get(c.Codec().supported_samplerates, C.int(i))
 		if cSampleRate == nil {
 			break
 		}
@@ -644,7 +658,7 @@ func (c *Codec) SupportedSampleRates() []int {
 func (c *Codec) SupportedSampleFormats() []avutil.SampleFormat {
 	var sampleFormats []avutil.SampleFormat
 	for i := 0; ; i++ {
-		cSampleFormat := C.go_av_samplefmt_get(c.CAVCodec.sample_fmts, C.int(i))
+		cSampleFormat := C.go_av_samplefmt_get(c.Codec().sample_fmts, C.int(i))
 		if cSampleFormat == nil {
 			break
 		}
@@ -660,7 +674,7 @@ func (c *Codec) SupportedSampleFormats() []avutil.SampleFormat {
 func (c *Codec) SupportedChannelLayouts() []avutil.ChannelLayout {
 	var channelLayouts []avutil.ChannelLayout
 	for i := 0; ; i++ {
-		cChannelLayout := C.go_av_uint64_get(c.CAVCodec.channel_layouts, C.int(i))
+		cChannelLayout := C.go_av_uint64_get(c.Codec().channel_layouts, C.int(i))
 		if cChannelLayout == nil {
 			break
 		}
@@ -676,7 +690,7 @@ func (c *Codec) SupportedChannelLayouts() []avutil.ChannelLayout {
 func (c *Codec) Profiles() []*Profile {
 	var profiles []*Profile
 	for i := 0; ; i++ {
-		cProfile := C.go_av_profile_get(c.CAVCodec.profiles, C.int(i))
+		cProfile := C.go_av_profile_get(c.Codec().profiles, C.int(i))
 		if cProfile == nil || int(cProfile.profile) == ProfileUnknown {
 			break
 		}
@@ -692,36 +706,44 @@ func (c *Codec) ProfileName(id int) string {
 }
 
 func (c *Codec) ProfileNameOK(id int) (string, bool) {
-	return cStringToStringOk(C.av_get_profile_name(c.CAVCodec, (C.int)(id)))
+	return cStringToStringOk(C.av_get_profile_name(c.Codec(), (C.int)(id)))
 }
 
 type Context struct {
-	CAVCodecContext *C.AVCodecContext
-	*avutil.OptionAccessor
+	//CAVCodecContext *C.AVCodecContext
+	//*avutil.OptionAccessor
+	CAVCodecContext uintptr
 }
 
 func NewContextWithCodec(codec *Codec) (*Context, error) {
 	var cCodec *C.AVCodec
 	if codec != nil {
-		cCodec = codec.CAVCodec
+		cCodec = codec.Codec()
 	}
-	cCtx := C.avcodec_alloc_context3(cCodec)
-	if cCtx == nil {
+	cCtx := uintptr(unsafe.Pointer(C.avcodec_alloc_context3(cCodec)))
+	if cCtx == 0 {
 		return nil, ErrAllocationError
 	}
-	return NewContextFromC(unsafe.Pointer(cCtx)), nil
+	return NewContextFromC(cCtx), nil
 }
 
-func NewContextFromC(cCtx unsafe.Pointer) *Context {
+func NewContextFromC(cCtx uintptr) *Context {
 	return &Context{
-		CAVCodecContext: (*C.AVCodecContext)(cCtx),
-		OptionAccessor:  avutil.NewOptionAccessor(cCtx, false),
+		CAVCodecContext: cCtx,
+		//OptionAccessor:  avutil.NewOptionAccessor(cCtx, false),
 	}
+}
+
+func (ctx *Context) CodeContext() (*C.AVCodecContext) {
+	if ctx.CAVCodecContext != 0 {
+		return (*C.AVCodecContext)(unsafe.Pointer(ctx.CAVCodecContext))
+	}
+	return nil
 }
 
 func (ctx *Context) Free() {
-	if ctx.CAVCodecContext != nil {
-		C.avcodec_free_context(&ctx.CAVCodecContext)
+	if ctx.CAVCodecContext != 0 {
+		C.avcodec_free_context((**C.AVCodecContext)(unsafe.Pointer(&ctx.CAVCodecContext)))
 	}
 }
 
@@ -732,13 +754,13 @@ func (ctx *Context) Open(options *avutil.Dictionary) error {
 func (ctx *Context) OpenWithCodec(codec *Codec, options *avutil.Dictionary) error {
 	var cCodec *C.AVCodec
 	if codec != nil {
-		cCodec = codec.CAVCodec
+		cCodec = codec.Codec()
 	}
 	var cOptions **C.AVDictionary
 	if options != nil {
 		cOptions = (**C.AVDictionary)(options.Pointer())
 	}
-	code := C.avcodec_open2(ctx.CAVCodecContext, cCodec, cOptions)
+	code := C.avcodec_open2(ctx.CodeContext(), cCodec, cOptions)
 	if code < 0 {
 		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
@@ -762,649 +784,649 @@ func (ctx *Context) OpenForDecoding(options *avutil.Dictionary) error {
 }
 
 func (ctx *Context) Close() {
-	C.avcodec_close(ctx.CAVCodecContext)
+	C.avcodec_close(ctx.CodeContext())
 }
 
 func (ctx *Context) Class() *avutil.Class {
-	if ctx.CAVCodecContext.av_class == nil {
+	if ctx.CodeContext().av_class == nil {
 		return nil
 	}
-	return avutil.NewClassFromC(unsafe.Pointer(ctx.CAVCodecContext.av_class))
+	return avutil.NewClassFromC(unsafe.Pointer(ctx.CodeContext().av_class))
 }
 
 func (ctx *Context) CodecType() avutil.MediaType {
-	return (avutil.MediaType)(ctx.CAVCodecContext.codec_type)
+	return (avutil.MediaType)(ctx.CodeContext().codec_type)
 }
 
 func (ctx *Context) SetCodecType(codecType avutil.MediaType) {
-	ctx.CAVCodecContext.codec_type = (C.enum_AVMediaType)(codecType)
+	ctx.CodeContext().codec_type = (C.enum_AVMediaType)(codecType)
 }
 
 func (ctx *Context) Codec() *Codec {
-	if ctx.CAVCodecContext.codec == nil {
+	if ctx.CodeContext().codec == nil {
 		return nil
 	}
-	return NewCodecFromC(unsafe.Pointer(ctx.CAVCodecContext.codec))
+	return NewCodecFromC(uintptr(unsafe.Pointer(ctx.CodeContext().codec)))
 }
 
 func (ctx *Context) SetCodec(codec *Codec) {
 	var cCodec *C.AVCodec
 	if codec != nil {
-		cCodec = codec.CAVCodec
+		cCodec = codec.Codec()
 	}
-	ctx.CAVCodecContext.codec = cCodec
+	ctx.CodeContext().codec = cCodec
 }
 
 func (ctx *Context) CodecID() CodecID {
-	return (CodecID)(ctx.CAVCodecContext.codec_id)
+	return (CodecID)(ctx.CodeContext().codec_id)
 }
 
 func (ctx *Context) SetCodecID(id CodecID) {
-	ctx.CAVCodecContext.codec_id = (C.enum_AVCodecID)(id)
+	ctx.CodeContext().codec_id = (C.enum_AVCodecID)(id)
 }
 
 func (ctx *Context) CodecTag() uint {
-	return uint(ctx.CAVCodecContext.codec_tag)
+	return uint(ctx.CodeContext().codec_tag)
 }
 
 func (ctx *Context) SetCodecTag(codecTag uint) {
-	ctx.CAVCodecContext.codec_tag = (C.uint)(codecTag)
+	ctx.CodeContext().codec_tag = (C.uint)(codecTag)
 }
 
 func (ctx *Context) PrivData() unsafe.Pointer {
-	return unsafe.Pointer(ctx.CAVCodecContext.priv_data)
+	return unsafe.Pointer(ctx.CodeContext().priv_data)
 }
 
 func (ctx *Context) SetPrivData(privData unsafe.Pointer) {
-	ctx.CAVCodecContext.priv_data = (unsafe.Pointer)(privData)
+	ctx.CodeContext().priv_data = (unsafe.Pointer)(privData)
 }
 
 func (ctx *Context) Opaque() unsafe.Pointer {
-	return unsafe.Pointer(ctx.CAVCodecContext.opaque)
+	return unsafe.Pointer(ctx.CodeContext().opaque)
 }
 
 func (ctx *Context) SetOpaque(opaque unsafe.Pointer) {
-	ctx.CAVCodecContext.opaque = opaque
+	ctx.CodeContext().opaque = opaque
 }
 
 func (ctx *Context) BitRate() int64 {
-	return int64(ctx.CAVCodecContext.bit_rate)
+	return int64(ctx.CodeContext().bit_rate)
 }
 
 func (ctx *Context) SetBitRate(bitRate int64) {
-	ctx.CAVCodecContext.bit_rate = (C.int64_t)(bitRate)
+	ctx.CodeContext().bit_rate = (C.int64_t)(bitRate)
 }
 
 func (ctx *Context) BitRateTolerance() int {
-	return int(ctx.CAVCodecContext.bit_rate_tolerance)
+	return int(ctx.CodeContext().bit_rate_tolerance)
 }
 
 func (ctx *Context) SetBitRateTolerance(bitRateTolerance int) {
-	ctx.CAVCodecContext.bit_rate_tolerance = (C.int)(bitRateTolerance)
+	ctx.CodeContext().bit_rate_tolerance = (C.int)(bitRateTolerance)
 }
 
 func (ctx *Context) GlobalQuality() int {
-	return int(ctx.CAVCodecContext.global_quality)
+	return int(ctx.CodeContext().global_quality)
 }
 
 func (ctx *Context) SetGlobalQuality(globalQuality int) {
-	ctx.CAVCodecContext.global_quality = (C.int)(globalQuality)
+	ctx.CodeContext().global_quality = (C.int)(globalQuality)
 }
 
 func (ctx *Context) CompressionLevel() int {
-	return int(ctx.CAVCodecContext.compression_level)
+	return int(ctx.CodeContext().compression_level)
 }
 
 func (ctx *Context) SetCompressionLevel(compressionLevel int) {
-	ctx.CAVCodecContext.compression_level = (C.int)(compressionLevel)
+	ctx.CodeContext().compression_level = (C.int)(compressionLevel)
 }
 
 func (ctx *Context) Flags() Flags {
-	return Flags(ctx.CAVCodecContext.flags)
+	return Flags(ctx.CodeContext().flags)
 }
 
 func (ctx *Context) SetFlags(flags Flags) {
-	ctx.CAVCodecContext.flags = (C.int)(flags)
+	ctx.CodeContext().flags = (C.int)(flags)
 }
 
 func (ctx *Context) Flags2() Flags2 {
-	return Flags2(ctx.CAVCodecContext.flags2)
+	return Flags2(ctx.CodeContext().flags2)
 }
 
 func (ctx *Context) SetFlags2(flags2 Flags2) {
-	ctx.CAVCodecContext.flags2 = (C.int)(flags2)
+	ctx.CodeContext().flags2 = (C.int)(flags2)
 }
 
 func (ctx *Context) ExtraData() unsafe.Pointer {
-	return unsafe.Pointer(ctx.CAVCodecContext.extradata)
+	return unsafe.Pointer(ctx.CodeContext().extradata)
 }
 
 func (ctx *Context) SetExtraData(data unsafe.Pointer) {
-	ctx.CAVCodecContext.extradata = (*C.uint8_t)(data)
+	ctx.CodeContext().extradata = (*C.uint8_t)(data)
 }
 
 func (ctx *Context) ExtraDataSize() int {
-	return int(ctx.CAVCodecContext.extradata_size)
+	return int(ctx.CodeContext().extradata_size)
 }
 
 func (ctx *Context) SetExtraDataSize(extraDataSize int) {
-	ctx.CAVCodecContext.extradata_size = (C.int)(extraDataSize)
+	ctx.CodeContext().extradata_size = (C.int)(extraDataSize)
 }
 
 func (ctx *Context) TimeBase() *avutil.Rational {
-	return avutil.NewRationalFromC(unsafe.Pointer(&ctx.CAVCodecContext.time_base))
+	return avutil.NewRationalFromC(unsafe.Pointer(&ctx.CodeContext().time_base))
 }
 
 func (ctx *Context) SetTimeBase(timeBase *avutil.Rational) {
-	ctx.CAVCodecContext.time_base.num = (C.int)(timeBase.Numerator())
-	ctx.CAVCodecContext.time_base.den = (C.int)(timeBase.Denominator())
+	ctx.CodeContext().time_base.num = (C.int)(timeBase.Numerator())
+	ctx.CodeContext().time_base.den = (C.int)(timeBase.Denominator())
 }
 
 func (ctx *Context) TicksPerFrame() int {
-	return int(ctx.CAVCodecContext.ticks_per_frame)
+	return int(ctx.CodeContext().ticks_per_frame)
 }
 
 func (ctx *Context) Delay() int {
-	return int(ctx.CAVCodecContext.delay)
+	return int(ctx.CodeContext().delay)
 }
 
 func (ctx *Context) Width() int {
-	return int(ctx.CAVCodecContext.width)
+	return int(ctx.CodeContext().width)
 }
 
 func (ctx *Context) SetWidth(width int) {
-	ctx.CAVCodecContext.width = (C.int)(width)
+	ctx.CodeContext().width = (C.int)(width)
 }
 
 func (ctx *Context) Height() int {
-	return int(ctx.CAVCodecContext.height)
+	return int(ctx.CodeContext().height)
 }
 
 func (ctx *Context) SetHeight(height int) {
-	ctx.CAVCodecContext.height = (C.int)(height)
+	ctx.CodeContext().height = (C.int)(height)
 }
 
 func (ctx *Context) CodedWidth() int {
-	return int(ctx.CAVCodecContext.coded_width)
+	return int(ctx.CodeContext().coded_width)
 }
 
 func (ctx *Context) SetCodedWidth(codedWidth int) {
-	ctx.CAVCodecContext.coded_width = (C.int)(codedWidth)
+	ctx.CodeContext().coded_width = (C.int)(codedWidth)
 }
 
 func (ctx *Context) CodedHeight() int {
-	return int(ctx.CAVCodecContext.coded_height)
+	return int(ctx.CodeContext().coded_height)
 }
 
 func (ctx *Context) SetCodedHeight(codedHeight int) {
-	ctx.CAVCodecContext.coded_height = (C.int)(codedHeight)
+	ctx.CodeContext().coded_height = (C.int)(codedHeight)
 }
 
 func (ctx *Context) GOPSize() int {
-	return int(ctx.CAVCodecContext.gop_size)
+	return int(ctx.CodeContext().gop_size)
 }
 
 func (ctx *Context) SetGOPSize(gOPSize int) {
-	ctx.CAVCodecContext.gop_size = (C.int)(gOPSize)
+	ctx.CodeContext().gop_size = (C.int)(gOPSize)
 }
 
 func (ctx *Context) PixelFormat() avutil.PixelFormat {
-	return (avutil.PixelFormat)(ctx.CAVCodecContext.pix_fmt)
+	return (avutil.PixelFormat)(ctx.CodeContext().pix_fmt)
 }
 
 func (ctx *Context) SetPixelFormat(pixelFormat avutil.PixelFormat) {
-	ctx.CAVCodecContext.pix_fmt = (C.enum_AVPixelFormat)(pixelFormat)
+	ctx.CodeContext().pix_fmt = (C.enum_AVPixelFormat)(pixelFormat)
 }
 
 func (ctx *Context) MaxBFrames() int {
-	return int(ctx.CAVCodecContext.max_b_frames)
+	return int(ctx.CodeContext().max_b_frames)
 }
 
 func (ctx *Context) SetMaxBFrames(maxBFrames int) {
-	ctx.CAVCodecContext.max_b_frames = (C.int)(maxBFrames)
+	ctx.CodeContext().max_b_frames = (C.int)(maxBFrames)
 }
 
 func (ctx *Context) BQuantFactor() float32 {
-	return float32(ctx.CAVCodecContext.b_quant_factor)
+	return float32(ctx.CodeContext().b_quant_factor)
 }
 
 func (ctx *Context) SetBQuantFactor(bQuantFactor float32) {
-	ctx.CAVCodecContext.b_quant_factor = (C.float)(bQuantFactor)
+	ctx.CodeContext().b_quant_factor = (C.float)(bQuantFactor)
 }
 
 func (ctx *Context) BFrameStrategy() int {
-	return int(ctx.CAVCodecContext.b_frame_strategy)
+	return int(ctx.CodeContext().b_frame_strategy)
 }
 
 func (ctx *Context) SetBFrameStrategy(bFrameStrategy int) {
-	ctx.CAVCodecContext.b_frame_strategy = (C.int)(bFrameStrategy)
+	ctx.CodeContext().b_frame_strategy = (C.int)(bFrameStrategy)
 }
 
 func (ctx *Context) BQuantOffset() float32 {
-	return float32(ctx.CAVCodecContext.b_quant_offset)
+	return float32(ctx.CodeContext().b_quant_offset)
 }
 
 func (ctx *Context) SetBQuantOffset(bQuantOffset float32) {
-	ctx.CAVCodecContext.b_quant_offset = (C.float)(bQuantOffset)
+	ctx.CodeContext().b_quant_offset = (C.float)(bQuantOffset)
 }
 
 func (ctx *Context) HasBFrames() int {
-	return int(ctx.CAVCodecContext.has_b_frames)
+	return int(ctx.CodeContext().has_b_frames)
 }
 
 func (ctx *Context) SetHasBFrames(hasBFrames int) {
-	ctx.CAVCodecContext.has_b_frames = (C.int)(hasBFrames)
+	ctx.CodeContext().has_b_frames = (C.int)(hasBFrames)
 }
 
 func (ctx *Context) MPEGQuant() int {
-	return int(ctx.CAVCodecContext.mpeg_quant)
+	return int(ctx.CodeContext().mpeg_quant)
 }
 
 func (ctx *Context) SetMPEGQuant(mPEGQuant int) {
-	ctx.CAVCodecContext.mpeg_quant = (C.int)(mPEGQuant)
+	ctx.CodeContext().mpeg_quant = (C.int)(mPEGQuant)
 }
 
 func (ctx *Context) IQuantFactor() float32 {
-	return float32(ctx.CAVCodecContext.i_quant_factor)
+	return float32(ctx.CodeContext().i_quant_factor)
 }
 
 func (ctx *Context) SetIQuantFactor(iQuantFactor float32) {
-	ctx.CAVCodecContext.i_quant_factor = (C.float)(iQuantFactor)
+	ctx.CodeContext().i_quant_factor = (C.float)(iQuantFactor)
 }
 
 func (ctx *Context) IQuantOffset() float32 {
-	return float32(ctx.CAVCodecContext.i_quant_offset)
+	return float32(ctx.CodeContext().i_quant_offset)
 }
 
 func (ctx *Context) SetIQuantOffset(iQuantOffset float32) {
-	ctx.CAVCodecContext.i_quant_offset = (C.float)(iQuantOffset)
+	ctx.CodeContext().i_quant_offset = (C.float)(iQuantOffset)
 }
 
 func (ctx *Context) LumiMasking() float32 {
-	return float32(ctx.CAVCodecContext.lumi_masking)
+	return float32(ctx.CodeContext().lumi_masking)
 }
 
 func (ctx *Context) SetLumiMasking(lumiMasking float32) {
-	ctx.CAVCodecContext.lumi_masking = (C.float)(lumiMasking)
+	ctx.CodeContext().lumi_masking = (C.float)(lumiMasking)
 }
 
 func (ctx *Context) TemporalCplxMasking() float32 {
-	return float32(ctx.CAVCodecContext.temporal_cplx_masking)
+	return float32(ctx.CodeContext().temporal_cplx_masking)
 }
 
 func (ctx *Context) SetTemporalCplxMasking(temporalCplxMasking float32) {
-	ctx.CAVCodecContext.temporal_cplx_masking = (C.float)(temporalCplxMasking)
+	ctx.CodeContext().temporal_cplx_masking = (C.float)(temporalCplxMasking)
 }
 
 func (ctx *Context) SpatialCplxMasking() float32 {
-	return float32(ctx.CAVCodecContext.spatial_cplx_masking)
+	return float32(ctx.CodeContext().spatial_cplx_masking)
 }
 
 func (ctx *Context) SetSpatialCplxMasking(spatialCplxMasking float32) {
-	ctx.CAVCodecContext.spatial_cplx_masking = (C.float)(spatialCplxMasking)
+	ctx.CodeContext().spatial_cplx_masking = (C.float)(spatialCplxMasking)
 }
 
 func (ctx *Context) PMasking() float32 {
-	return float32(ctx.CAVCodecContext.p_masking)
+	return float32(ctx.CodeContext().p_masking)
 }
 
 func (ctx *Context) SetPMasking(pMasking float32) {
-	ctx.CAVCodecContext.p_masking = (C.float)(pMasking)
+	ctx.CodeContext().p_masking = (C.float)(pMasking)
 }
 
 func (ctx *Context) DarkMasking() float32 {
-	return float32(ctx.CAVCodecContext.dark_masking)
+	return float32(ctx.CodeContext().dark_masking)
 }
 
 func (ctx *Context) SetDarkMasking(darkMasking float32) {
-	ctx.CAVCodecContext.dark_masking = (C.float)(darkMasking)
+	ctx.CodeContext().dark_masking = (C.float)(darkMasking)
 }
 
 func (ctx *Context) SliceCount() int {
-	return int(ctx.CAVCodecContext.slice_count)
+	return int(ctx.CodeContext().slice_count)
 }
 
 func (ctx *Context) SetSliceCount(sliceCount int) {
-	ctx.CAVCodecContext.slice_count = (C.int)(sliceCount)
+	ctx.CodeContext().slice_count = (C.int)(sliceCount)
 }
 
 func (ctx *Context) PredictionMethod() int {
-	return int(ctx.CAVCodecContext.prediction_method)
+	return int(ctx.CodeContext().prediction_method)
 }
 
 func (ctx *Context) SetPredictionMethod(predictionMethod int) {
-	ctx.CAVCodecContext.prediction_method = (C.int)(predictionMethod)
+	ctx.CodeContext().prediction_method = (C.int)(predictionMethod)
 }
 
 func (ctx *Context) SliceOffset() unsafe.Pointer {
-	return unsafe.Pointer(ctx.CAVCodecContext.slice_offset)
+	return unsafe.Pointer(ctx.CodeContext().slice_offset)
 }
 
 func (ctx *Context) SetSliceOffset(sliceOffset unsafe.Pointer) {
-	ctx.CAVCodecContext.slice_offset = (*C.int)(sliceOffset)
+	ctx.CodeContext().slice_offset = (*C.int)(sliceOffset)
 }
 
 func (ctx *Context) SampleAspectRatio() *avutil.Rational {
-	return avutil.NewRationalFromC(unsafe.Pointer(&ctx.CAVCodecContext.sample_aspect_ratio))
+	return avutil.NewRationalFromC(unsafe.Pointer(&ctx.CodeContext().sample_aspect_ratio))
 }
 
 func (ctx *Context) SetSampleAspectRatio(aspectRatio *avutil.Rational) {
-	ctx.CAVCodecContext.sample_aspect_ratio.num = (C.int)(aspectRatio.Numerator())
-	ctx.CAVCodecContext.sample_aspect_ratio.den = (C.int)(aspectRatio.Denominator())
+	ctx.CodeContext().sample_aspect_ratio.num = (C.int)(aspectRatio.Numerator())
+	ctx.CodeContext().sample_aspect_ratio.den = (C.int)(aspectRatio.Denominator())
 }
 
 func (ctx *Context) MECmp() int {
-	return int(ctx.CAVCodecContext.me_cmp)
+	return int(ctx.CodeContext().me_cmp)
 }
 
 func (ctx *Context) SetMECmp(meCmp int) {
-	ctx.CAVCodecContext.me_cmp = (C.int)(meCmp)
+	ctx.CodeContext().me_cmp = (C.int)(meCmp)
 }
 
 func (ctx *Context) MESubCmp() int {
-	return int(ctx.CAVCodecContext.me_sub_cmp)
+	return int(ctx.CodeContext().me_sub_cmp)
 }
 
 func (ctx *Context) SetMESubCmp(meSubCmp int) {
-	ctx.CAVCodecContext.me_sub_cmp = (C.int)(meSubCmp)
+	ctx.CodeContext().me_sub_cmp = (C.int)(meSubCmp)
 }
 
 func (ctx *Context) MBCmp() int {
-	return int(ctx.CAVCodecContext.mb_cmp)
+	return int(ctx.CodeContext().mb_cmp)
 }
 
 func (ctx *Context) SetMBCmp(mbCmp int) {
-	ctx.CAVCodecContext.mb_cmp = (C.int)(mbCmp)
+	ctx.CodeContext().mb_cmp = (C.int)(mbCmp)
 }
 
 func (ctx *Context) ILDCTCmp() int {
-	return int(ctx.CAVCodecContext.ildct_cmp)
+	return int(ctx.CodeContext().ildct_cmp)
 }
 
 func (ctx *Context) SetILDCTCmp(ildctCmp int) {
-	ctx.CAVCodecContext.ildct_cmp = (C.int)(ildctCmp)
+	ctx.CodeContext().ildct_cmp = (C.int)(ildctCmp)
 }
 
 func (ctx *Context) DiaSize() int {
-	return int(ctx.CAVCodecContext.dia_size)
+	return int(ctx.CodeContext().dia_size)
 }
 
 func (ctx *Context) SetDiaSize(diaSize int) {
-	ctx.CAVCodecContext.dia_size = (C.int)(diaSize)
+	ctx.CodeContext().dia_size = (C.int)(diaSize)
 }
 
 func (ctx *Context) LastPredictorCount() int {
-	return int(ctx.CAVCodecContext.last_predictor_count)
+	return int(ctx.CodeContext().last_predictor_count)
 }
 
 func (ctx *Context) SetLastPredictorCount(count int) {
-	ctx.CAVCodecContext.last_predictor_count = (C.int)(count)
+	ctx.CodeContext().last_predictor_count = (C.int)(count)
 }
 
 func (ctx *Context) PreME() int {
-	return int(ctx.CAVCodecContext.pre_me)
+	return int(ctx.CodeContext().pre_me)
 }
 
 func (ctx *Context) SetPreME(preME int) {
-	ctx.CAVCodecContext.pre_me = (C.int)(preME)
+	ctx.CodeContext().pre_me = (C.int)(preME)
 }
 
 func (ctx *Context) MEPreCmp() int {
-	return int(ctx.CAVCodecContext.me_pre_cmp)
+	return int(ctx.CodeContext().me_pre_cmp)
 }
 
 func (ctx *Context) SetMEPreCmp(mePreCmp int) {
-	ctx.CAVCodecContext.me_pre_cmp = (C.int)(mePreCmp)
+	ctx.CodeContext().me_pre_cmp = (C.int)(mePreCmp)
 }
 
 func (ctx *Context) PreDiaSize() int {
-	return int(ctx.CAVCodecContext.pre_dia_size)
+	return int(ctx.CodeContext().pre_dia_size)
 }
 
 func (ctx *Context) SetPreDiaSize(preDiaSize int) {
-	ctx.CAVCodecContext.pre_dia_size = (C.int)(preDiaSize)
+	ctx.CodeContext().pre_dia_size = (C.int)(preDiaSize)
 }
 
 func (ctx *Context) MESubpelQuality() int {
-	return int(ctx.CAVCodecContext.me_subpel_quality)
+	return int(ctx.CodeContext().me_subpel_quality)
 }
 
 func (ctx *Context) SetMESubpelQuality(meSubpelQuality int) {
-	ctx.CAVCodecContext.me_subpel_quality = (C.int)(meSubpelQuality)
+	ctx.CodeContext().me_subpel_quality = (C.int)(meSubpelQuality)
 }
 
 func (ctx *Context) MERange() int {
-	return int(ctx.CAVCodecContext.me_range)
+	return int(ctx.CodeContext().me_range)
 }
 
 func (ctx *Context) SetMERange(meRange int) {
-	ctx.CAVCodecContext.me_range = (C.int)(meRange)
+	ctx.CodeContext().me_range = (C.int)(meRange)
 }
 
 func (ctx *Context) MBDecision() int {
-	return int(ctx.CAVCodecContext.mb_decision)
+	return int(ctx.CodeContext().mb_decision)
 }
 
 func (ctx *Context) SetMBDecision(mbDecision int) {
-	ctx.CAVCodecContext.mb_decision = (C.int)(mbDecision)
+	ctx.CodeContext().mb_decision = (C.int)(mbDecision)
 }
 func (ctx *Context) ScenechangeThreshold() int {
-	return int(ctx.CAVCodecContext.scenechange_threshold)
+	return int(ctx.CodeContext().scenechange_threshold)
 }
 
 func (ctx *Context) SetScenechangeThreshold(threshold int) {
-	ctx.CAVCodecContext.scenechange_threshold = (C.int)(threshold)
+	ctx.CodeContext().scenechange_threshold = (C.int)(threshold)
 }
 
 func (ctx *Context) NoiseReduction() int {
-	return int(ctx.CAVCodecContext.noise_reduction)
+	return int(ctx.CodeContext().noise_reduction)
 }
 
 func (ctx *Context) SetNoiseReduction(reduction int) {
-	ctx.CAVCodecContext.noise_reduction = (C.int)(reduction)
+	ctx.CodeContext().noise_reduction = (C.int)(reduction)
 }
 
 func (ctx *Context) IntraDCPrecision() int {
-	return int(ctx.CAVCodecContext.intra_dc_precision)
+	return int(ctx.CodeContext().intra_dc_precision)
 }
 
 func (ctx *Context) SetIntraDCPrecision(precision int) {
-	ctx.CAVCodecContext.intra_dc_precision = (C.int)(precision)
+	ctx.CodeContext().intra_dc_precision = (C.int)(precision)
 }
 
 func (ctx *Context) SkipTop() int {
-	return int(ctx.CAVCodecContext.skip_top)
+	return int(ctx.CodeContext().skip_top)
 }
 
 func (ctx *Context) SetSkipTop(skip int) {
-	ctx.CAVCodecContext.skip_top = (C.int)(skip)
+	ctx.CodeContext().skip_top = (C.int)(skip)
 }
 
 func (ctx *Context) SkipBottom() int {
-	return int(ctx.CAVCodecContext.skip_bottom)
+	return int(ctx.CodeContext().skip_bottom)
 }
 
 func (ctx *Context) SetSkipBottom(skip int) {
-	ctx.CAVCodecContext.skip_bottom = (C.int)(skip)
+	ctx.CodeContext().skip_bottom = (C.int)(skip)
 }
 
 func (ctx *Context) MBLmin() int {
-	return int(ctx.CAVCodecContext.mb_lmin)
+	return int(ctx.CodeContext().mb_lmin)
 }
 
 func (ctx *Context) SetMBLmin(min int) {
-	ctx.CAVCodecContext.mb_lmin = (C.int)(min)
+	ctx.CodeContext().mb_lmin = (C.int)(min)
 }
 
 func (ctx *Context) MBLmax() int {
-	return int(ctx.CAVCodecContext.mb_lmax)
+	return int(ctx.CodeContext().mb_lmax)
 }
 
 func (ctx *Context) SetMBLmax(max int) {
-	ctx.CAVCodecContext.mb_lmax = (C.int)(max)
+	ctx.CodeContext().mb_lmax = (C.int)(max)
 }
 
 func (ctx *Context) MEPenaltyCompensation() int {
-	return int(ctx.CAVCodecContext.me_penalty_compensation)
+	return int(ctx.CodeContext().me_penalty_compensation)
 }
 
 func (ctx *Context) SetMEPenaltyCompensation(compensation int) {
-	ctx.CAVCodecContext.me_penalty_compensation = (C.int)(compensation)
+	ctx.CodeContext().me_penalty_compensation = (C.int)(compensation)
 }
 
 func (ctx *Context) BidirRefine() int {
-	return int(ctx.CAVCodecContext.bidir_refine)
+	return int(ctx.CodeContext().bidir_refine)
 }
 
 func (ctx *Context) SetBidirRefine(refine int) {
-	ctx.CAVCodecContext.bidir_refine = (C.int)(refine)
+	ctx.CodeContext().bidir_refine = (C.int)(refine)
 }
 
 func (ctx *Context) BrdScale() int {
-	return int(ctx.CAVCodecContext.brd_scale)
+	return int(ctx.CodeContext().brd_scale)
 }
 
 func (ctx *Context) SetBrdScale(brdScale int) {
-	ctx.CAVCodecContext.brd_scale = (C.int)(brdScale)
+	ctx.CodeContext().brd_scale = (C.int)(brdScale)
 }
 
 func (ctx *Context) KeyIntMin() int {
-	return int(ctx.CAVCodecContext.keyint_min)
+	return int(ctx.CodeContext().keyint_min)
 }
 
 func (ctx *Context) SetKeyIntMin(min int) {
-	ctx.CAVCodecContext.keyint_min = (C.int)(min)
+	ctx.CodeContext().keyint_min = (C.int)(min)
 }
 
 func (ctx *Context) Refs() int {
-	return int(ctx.CAVCodecContext.refs)
+	return int(ctx.CodeContext().refs)
 }
 
 func (ctx *Context) SetRefs(refs int) {
-	ctx.CAVCodecContext.refs = (C.int)(refs)
+	ctx.CodeContext().refs = (C.int)(refs)
 }
 
 func (ctx *Context) ChromaOffset() int {
-	return int(ctx.CAVCodecContext.chromaoffset)
+	return int(ctx.CodeContext().chromaoffset)
 }
 
 func (ctx *Context) SetChromaOffset(offset int) {
-	ctx.CAVCodecContext.chromaoffset = (C.int)(offset)
+	ctx.CodeContext().chromaoffset = (C.int)(offset)
 }
 
 func (ctx *Context) MV0Threshold() int {
-	return int(ctx.CAVCodecContext.mv0_threshold)
+	return int(ctx.CodeContext().mv0_threshold)
 }
 
 func (ctx *Context) SetMV0Threshold(threshold int) {
-	ctx.CAVCodecContext.mv0_threshold = (C.int)(threshold)
+	ctx.CodeContext().mv0_threshold = (C.int)(threshold)
 }
 
 func (ctx *Context) BSensitivity() int {
-	return int(ctx.CAVCodecContext.b_sensitivity)
+	return int(ctx.CodeContext().b_sensitivity)
 }
 
 func (ctx *Context) SetBSensitivity(sensivity int) {
-	ctx.CAVCodecContext.b_sensitivity = (C.int)(sensivity)
+	ctx.CodeContext().b_sensitivity = (C.int)(sensivity)
 }
 
 func (ctx *Context) ChromaSampleLocation() avutil.ChromaLocation {
-	return (avutil.ChromaLocation)(ctx.CAVCodecContext.chroma_sample_location)
+	return (avutil.ChromaLocation)(ctx.CodeContext().chroma_sample_location)
 }
 
 func (ctx *Context) SetChromaSampleLocation(location avutil.ChromaLocation) {
-	ctx.CAVCodecContext.chroma_sample_location = (C.enum_AVChromaLocation)(location)
+	ctx.CodeContext().chroma_sample_location = (C.enum_AVChromaLocation)(location)
 }
 
 func (ctx *Context) Slices() int {
-	return int(ctx.CAVCodecContext.slices)
+	return int(ctx.CodeContext().slices)
 }
 
 func (ctx *Context) SetSlices(slices int) {
-	ctx.CAVCodecContext.slices = (C.int)(slices)
+	ctx.CodeContext().slices = (C.int)(slices)
 }
 
 func (ctx *Context) SampleRate() int {
-	return int(ctx.CAVCodecContext.sample_rate)
+	return int(ctx.CodeContext().sample_rate)
 }
 
 func (ctx *Context) SetSampleRate(rate int) {
-	ctx.CAVCodecContext.sample_rate = (C.int)(rate)
+	ctx.CodeContext().sample_rate = (C.int)(rate)
 }
 
 func (ctx *Context) Channels() int {
-	return int(ctx.CAVCodecContext.channels)
+	return int(ctx.CodeContext().channels)
 }
 
 func (ctx *Context) SetChannels(channels int) {
-	ctx.CAVCodecContext.channels = (C.int)(channels)
+	ctx.CodeContext().channels = (C.int)(channels)
 }
 
 func (ctx *Context) SampleFormat() avutil.SampleFormat {
-	return (avutil.SampleFormat)(ctx.CAVCodecContext.sample_fmt)
+	return (avutil.SampleFormat)(ctx.CodeContext().sample_fmt)
 }
 
 func (ctx *Context) SetSampleFormat(format avutil.SampleFormat) {
-	ctx.CAVCodecContext.sample_fmt = (C.enum_AVSampleFormat)(format)
+	ctx.CodeContext().sample_fmt = (C.enum_AVSampleFormat)(format)
 }
 
 func (ctx *Context) FrameSize() int {
-	return int(ctx.CAVCodecContext.frame_size)
+	return int(ctx.CodeContext().frame_size)
 }
 
 func (ctx *Context) SetFrameSize(size int) {
-	ctx.CAVCodecContext.frame_size = (C.int)(size)
+	ctx.CodeContext().frame_size = (C.int)(size)
 }
 
 func (ctx *Context) FrameNumber() int {
-	return int(ctx.CAVCodecContext.frame_number)
+	return int(ctx.CodeContext().frame_number)
 }
 
 func (ctx *Context) SetFrameNumber(number int) {
-	ctx.CAVCodecContext.frame_number = (C.int)(number)
+	ctx.CodeContext().frame_number = (C.int)(number)
 }
 
 func (ctx *Context) BlockAlign() int {
-	return int(ctx.CAVCodecContext.block_align)
+	return int(ctx.CodeContext().block_align)
 }
 
 func (ctx *Context) SetBlockAlign(blockAlign int) {
-	ctx.CAVCodecContext.block_align = (C.int)(blockAlign)
+	ctx.CodeContext().block_align = (C.int)(blockAlign)
 }
 
 func (ctx *Context) Cutoff() int {
-	return int(ctx.CAVCodecContext.cutoff)
+	return int(ctx.CodeContext().cutoff)
 }
 
 func (ctx *Context) SetCutoff(cutoff int) {
-	ctx.CAVCodecContext.cutoff = (C.int)(cutoff)
+	ctx.CodeContext().cutoff = (C.int)(cutoff)
 }
 
 func (ctx *Context) ChannelLayout() avutil.ChannelLayout {
-	return (avutil.ChannelLayout)(ctx.CAVCodecContext.channel_layout)
+	return (avutil.ChannelLayout)(ctx.CodeContext().channel_layout)
 }
 
 func (ctx *Context) SetChannelLayout(layout avutil.ChannelLayout) {
-	ctx.CAVCodecContext.channel_layout = (C.uint64_t)(layout)
+	ctx.CodeContext().channel_layout = (C.uint64_t)(layout)
 }
 
 func (ctx *Context) RequestChannelLayout() avutil.ChannelLayout {
-	return (avutil.ChannelLayout)(ctx.CAVCodecContext.request_channel_layout)
+	return (avutil.ChannelLayout)(ctx.CodeContext().request_channel_layout)
 }
 
 func (ctx *Context) SetRequestChannelLayout(layout avutil.ChannelLayout) {
-	ctx.CAVCodecContext.request_channel_layout = (C.uint64_t)(layout)
+	ctx.CodeContext().request_channel_layout = (C.uint64_t)(layout)
 }
 func (ctx *Context) RequestSampleFormat() avutil.SampleFormat {
-	return (avutil.SampleFormat)(ctx.CAVCodecContext.request_sample_fmt)
+	return (avutil.SampleFormat)(ctx.CodeContext().request_sample_fmt)
 }
 
 func (ctx *Context) SetRequestSampleFormat(format avutil.SampleFormat) {
-	ctx.CAVCodecContext.request_sample_fmt = (C.enum_AVSampleFormat)(format)
+	ctx.CodeContext().request_sample_fmt = (C.enum_AVSampleFormat)(format)
 }
 
 func (ctx *Context) RefCountedFrames() bool {
-	return ctx.CAVCodecContext.refcounted_frames != C.int(0)
+	return ctx.CodeContext().refcounted_frames != C.int(0)
 }
 
 func (ctx *Context) SetRefCountedFrames(refCounted bool) {
@@ -1412,385 +1434,385 @@ func (ctx *Context) SetRefCountedFrames(refCounted bool) {
 	if refCounted {
 		cRefCounted = C.int(1)
 	}
-	ctx.CAVCodecContext.refcounted_frames = cRefCounted
+	ctx.CodeContext().refcounted_frames = cRefCounted
 }
 
 func (ctx *Context) QCompress() float32 {
-	return float32(ctx.CAVCodecContext.qcompress)
+	return float32(ctx.CodeContext().qcompress)
 }
 
 func (ctx *Context) SetQCompress(qcompress float32) {
-	ctx.CAVCodecContext.qcompress = (C.float)(qcompress)
+	ctx.CodeContext().qcompress = (C.float)(qcompress)
 }
 
 func (ctx *Context) QBlur() float32 {
-	return float32(ctx.CAVCodecContext.qblur)
+	return float32(ctx.CodeContext().qblur)
 }
 
 func (ctx *Context) SetQBlur(qblur float32) {
-	ctx.CAVCodecContext.qblur = (C.float)(qblur)
+	ctx.CodeContext().qblur = (C.float)(qblur)
 }
 
 func (ctx *Context) QMin() int {
-	return int(ctx.CAVCodecContext.qmin)
+	return int(ctx.CodeContext().qmin)
 }
 
 func (ctx *Context) SetQMin(qmin int) {
-	ctx.CAVCodecContext.qmin = (C.int)(qmin)
+	ctx.CodeContext().qmin = (C.int)(qmin)
 }
 
 func (ctx *Context) QMax() int {
-	return int(ctx.CAVCodecContext.qmax)
+	return int(ctx.CodeContext().qmax)
 }
 
 func (ctx *Context) SetQMax(qmax int) {
-	ctx.CAVCodecContext.qmax = (C.int)(qmax)
+	ctx.CodeContext().qmax = (C.int)(qmax)
 }
 
 func (ctx *Context) MaxQDiff() int {
-	return int(ctx.CAVCodecContext.max_qdiff)
+	return int(ctx.CodeContext().max_qdiff)
 }
 
 func (ctx *Context) SetMaxQDiff(max int) {
-	ctx.CAVCodecContext.max_qdiff = (C.int)(max)
+	ctx.CodeContext().max_qdiff = (C.int)(max)
 }
 
 func (ctx *Context) RCBufferSize() int {
-	return int(ctx.CAVCodecContext.rc_buffer_size)
+	return int(ctx.CodeContext().rc_buffer_size)
 }
 
 func (ctx *Context) SetRCBufferSize(size int) {
-	ctx.CAVCodecContext.rc_buffer_size = (C.int)(size)
+	ctx.CodeContext().rc_buffer_size = (C.int)(size)
 }
 
 func (ctx *Context) RCOverrideCount() int {
-	return int(ctx.CAVCodecContext.rc_override_count)
+	return int(ctx.CodeContext().rc_override_count)
 }
 
 func (ctx *Context) SetRCOverrideCount(count int) {
-	ctx.CAVCodecContext.rc_override_count = (C.int)(count)
+	ctx.CodeContext().rc_override_count = (C.int)(count)
 }
 func (ctx *Context) RCMaxRate() int64 {
-	return int64(ctx.CAVCodecContext.rc_max_rate)
+	return int64(ctx.CodeContext().rc_max_rate)
 }
 
 func (ctx *Context) SetRCMaxRate(max int64) {
-	ctx.CAVCodecContext.rc_max_rate = (C.int64_t)(max)
+	ctx.CodeContext().rc_max_rate = (C.int64_t)(max)
 }
 
 func (ctx *Context) RCMinRate() int64 {
-	return int64(ctx.CAVCodecContext.rc_min_rate)
+	return int64(ctx.CodeContext().rc_min_rate)
 }
 
 func (ctx *Context) SetRCMinRate(min int64) {
-	ctx.CAVCodecContext.rc_min_rate = (C.int64_t)(min)
+	ctx.CodeContext().rc_min_rate = (C.int64_t)(min)
 }
 
 func (ctx *Context) RCMaxAvailableVBVUse() float32 {
-	return float32(ctx.CAVCodecContext.rc_max_available_vbv_use)
+	return float32(ctx.CodeContext().rc_max_available_vbv_use)
 }
 
 func (ctx *Context) SetRCMaxAvailableVBVUse(max float32) {
-	ctx.CAVCodecContext.rc_max_available_vbv_use = (C.float)(max)
+	ctx.CodeContext().rc_max_available_vbv_use = (C.float)(max)
 }
 
 func (ctx *Context) RCMinVBVOverflowUse() float32 {
-	return float32(ctx.CAVCodecContext.rc_min_vbv_overflow_use)
+	return float32(ctx.CodeContext().rc_min_vbv_overflow_use)
 }
 
 func (ctx *Context) SetRCMinVBVOverflowUse(min float32) {
-	ctx.CAVCodecContext.rc_min_vbv_overflow_use = (C.float)(min)
+	ctx.CodeContext().rc_min_vbv_overflow_use = (C.float)(min)
 }
 
 func (ctx *Context) RCInitialBufferOccupancy() int {
-	return int(ctx.CAVCodecContext.rc_initial_buffer_occupancy)
+	return int(ctx.CodeContext().rc_initial_buffer_occupancy)
 }
 
 func (ctx *Context) SetRCInitialBufferOccupancy(initial int) {
-	ctx.CAVCodecContext.rc_initial_buffer_occupancy = (C.int)(initial)
+	ctx.CodeContext().rc_initial_buffer_occupancy = (C.int)(initial)
 }
 
 func (ctx *Context) ContextModel() int {
-	return int(ctx.CAVCodecContext.context_model)
+	return int(ctx.CodeContext().context_model)
 }
 
 func (ctx *Context) SetContextModel(contextModel int) {
-	ctx.CAVCodecContext.context_model = (C.int)(contextModel)
+	ctx.CodeContext().context_model = (C.int)(contextModel)
 }
 
 func (ctx *Context) FrameSkipThreshold() int {
-	return int(ctx.CAVCodecContext.frame_skip_threshold)
+	return int(ctx.CodeContext().frame_skip_threshold)
 }
 
 func (ctx *Context) SetFrameSkipThreshold(threshold int) {
-	ctx.CAVCodecContext.frame_skip_threshold = (C.int)(threshold)
+	ctx.CodeContext().frame_skip_threshold = (C.int)(threshold)
 }
 
 func (ctx *Context) FrameSkipFactor() int {
-	return int(ctx.CAVCodecContext.frame_skip_factor)
+	return int(ctx.CodeContext().frame_skip_factor)
 }
 
 func (ctx *Context) SetFrameSkipFactor(factor int) {
-	ctx.CAVCodecContext.frame_skip_factor = (C.int)(factor)
+	ctx.CodeContext().frame_skip_factor = (C.int)(factor)
 }
 
 func (ctx *Context) FrameSkipExp() int {
-	return int(ctx.CAVCodecContext.frame_skip_exp)
+	return int(ctx.CodeContext().frame_skip_exp)
 }
 
 func (ctx *Context) SetFrameSkipExp(skip int) {
-	ctx.CAVCodecContext.frame_skip_exp = (C.int)(skip)
+	ctx.CodeContext().frame_skip_exp = (C.int)(skip)
 }
 
 func (ctx *Context) FrameSkipCmp() int {
-	return int(ctx.CAVCodecContext.frame_skip_cmp)
+	return int(ctx.CodeContext().frame_skip_cmp)
 }
 
 func (ctx *Context) SetFrameSkipCmp(skip int) {
-	ctx.CAVCodecContext.frame_skip_cmp = (C.int)(skip)
+	ctx.CodeContext().frame_skip_cmp = (C.int)(skip)
 }
 
 func (ctx *Context) Trellis() int {
-	return int(ctx.CAVCodecContext.trellis)
+	return int(ctx.CodeContext().trellis)
 }
 
 func (ctx *Context) SetTrellis(trellis int) {
-	ctx.CAVCodecContext.trellis = (C.int)(trellis)
+	ctx.CodeContext().trellis = (C.int)(trellis)
 }
 
 func (ctx *Context) MinPredictionOrder() int {
-	return int(ctx.CAVCodecContext.min_prediction_order)
+	return int(ctx.CodeContext().min_prediction_order)
 }
 
 func (ctx *Context) SetMinPredictionOrder(min int) {
-	ctx.CAVCodecContext.min_prediction_order = (C.int)(min)
+	ctx.CodeContext().min_prediction_order = (C.int)(min)
 }
 
 func (ctx *Context) MaxPredictionOrder() int {
-	return int(ctx.CAVCodecContext.max_prediction_order)
+	return int(ctx.CodeContext().max_prediction_order)
 }
 
 func (ctx *Context) SetMaxPredictionOrder(max int) {
-	ctx.CAVCodecContext.max_prediction_order = (C.int)(max)
+	ctx.CodeContext().max_prediction_order = (C.int)(max)
 }
 
 func (ctx *Context) TimecodeFrameStart() int64 {
-	return int64(ctx.CAVCodecContext.timecode_frame_start)
+	return int64(ctx.CodeContext().timecode_frame_start)
 }
 
 func (ctx *Context) SetTimecodeFrameStart(start int64) {
-	ctx.CAVCodecContext.timecode_frame_start = (C.int64_t)(start)
+	ctx.CodeContext().timecode_frame_start = (C.int64_t)(start)
 }
 
 func (ctx *Context) RTPPayloadSize() int {
-	return int(ctx.CAVCodecContext.rtp_payload_size)
+	return int(ctx.CodeContext().rtp_payload_size)
 }
 
 func (ctx *Context) SetRTPPayloadSize(size int) {
-	ctx.CAVCodecContext.rtp_payload_size = (C.int)(size)
+	ctx.CodeContext().rtp_payload_size = (C.int)(size)
 }
 
 func (ctx *Context) MVBits() int {
-	return int(ctx.CAVCodecContext.mv_bits)
+	return int(ctx.CodeContext().mv_bits)
 }
 
 func (ctx *Context) SetMVBits(bits int) {
-	ctx.CAVCodecContext.mv_bits = (C.int)(bits)
+	ctx.CodeContext().mv_bits = (C.int)(bits)
 }
 
 func (ctx *Context) HeaderBits() int {
-	return int(ctx.CAVCodecContext.header_bits)
+	return int(ctx.CodeContext().header_bits)
 }
 
 func (ctx *Context) SetHeaderBits(bits int) {
-	ctx.CAVCodecContext.header_bits = (C.int)(bits)
+	ctx.CodeContext().header_bits = (C.int)(bits)
 }
 
 func (ctx *Context) ITexBits() int {
-	return int(ctx.CAVCodecContext.i_tex_bits)
+	return int(ctx.CodeContext().i_tex_bits)
 }
 
 func (ctx *Context) SetITexBits(bits int) {
-	ctx.CAVCodecContext.i_tex_bits = (C.int)(bits)
+	ctx.CodeContext().i_tex_bits = (C.int)(bits)
 }
 
 func (ctx *Context) PTexBits() int {
-	return int(ctx.CAVCodecContext.p_tex_bits)
+	return int(ctx.CodeContext().p_tex_bits)
 }
 
 func (ctx *Context) SetPTexBits(bits int) {
-	ctx.CAVCodecContext.p_tex_bits = (C.int)(bits)
+	ctx.CodeContext().p_tex_bits = (C.int)(bits)
 }
 
 func (ctx *Context) ICount() int {
-	return int(ctx.CAVCodecContext.i_count)
+	return int(ctx.CodeContext().i_count)
 }
 
 func (ctx *Context) SetICount(count int) {
-	ctx.CAVCodecContext.i_count = (C.int)(count)
+	ctx.CodeContext().i_count = (C.int)(count)
 }
 
 func (ctx *Context) PCount() int {
-	return int(ctx.CAVCodecContext.p_count)
+	return int(ctx.CodeContext().p_count)
 }
 
 func (ctx *Context) SetPCount(count int) {
-	ctx.CAVCodecContext.p_count = (C.int)(count)
+	ctx.CodeContext().p_count = (C.int)(count)
 }
 
 func (ctx *Context) SkipCount() int {
-	return int(ctx.CAVCodecContext.skip_count)
+	return int(ctx.CodeContext().skip_count)
 }
 
 func (ctx *Context) SetSkipCount(skip int) {
-	ctx.CAVCodecContext.skip_count = (C.int)(skip)
+	ctx.CodeContext().skip_count = (C.int)(skip)
 }
 
 func (ctx *Context) MiscBits() int {
-	return int(ctx.CAVCodecContext.misc_bits)
+	return int(ctx.CodeContext().misc_bits)
 }
 
 func (ctx *Context) SetMiscBits(bits int) {
-	ctx.CAVCodecContext.misc_bits = (C.int)(bits)
+	ctx.CodeContext().misc_bits = (C.int)(bits)
 }
 
 func (ctx *Context) FrameBits() int {
-	return int(ctx.CAVCodecContext.frame_bits)
+	return int(ctx.CodeContext().frame_bits)
 }
 
 func (ctx *Context) SetFrameBits(bits int) {
-	ctx.CAVCodecContext.frame_bits = (C.int)(bits)
+	ctx.CodeContext().frame_bits = (C.int)(bits)
 }
 
 func (ctx *Context) StrictStdCompliance() Compliance {
-	return Compliance(ctx.CAVCodecContext.strict_std_compliance)
+	return Compliance(ctx.CodeContext().strict_std_compliance)
 }
 
 func (ctx *Context) SetStrictStdCompliance(compliance Compliance) {
-	ctx.CAVCodecContext.strict_std_compliance = (C.int)(compliance)
+	ctx.CodeContext().strict_std_compliance = (C.int)(compliance)
 }
 
 func (ctx *Context) ReorderedOpaque() int64 {
-	return int64(ctx.CAVCodecContext.reordered_opaque)
+	return int64(ctx.CodeContext().reordered_opaque)
 }
 
 func (ctx *Context) SetReorderedOpaque(opaque int64) {
-	ctx.CAVCodecContext.reordered_opaque = (C.int64_t)(opaque)
+	ctx.CodeContext().reordered_opaque = (C.int64_t)(opaque)
 }
 
 func (ctx *Context) DCTAlgorithm() DCTAlgorithm {
-	return DCTAlgorithm(ctx.CAVCodecContext.dct_algo)
+	return DCTAlgorithm(ctx.CodeContext().dct_algo)
 }
 
 func (ctx *Context) SetDCTAlgorithm(algo DCTAlgorithm) {
-	ctx.CAVCodecContext.dct_algo = (C.int)(algo)
+	ctx.CodeContext().dct_algo = (C.int)(algo)
 }
 
 func (ctx *Context) IDCTAlgorithm() IDCTAlgorithm {
-	return IDCTAlgorithm(ctx.CAVCodecContext.idct_algo)
+	return IDCTAlgorithm(ctx.CodeContext().idct_algo)
 }
 
 func (ctx *Context) SetIDCTAlgorithm(algo IDCTAlgorithm) {
-	ctx.CAVCodecContext.idct_algo = (C.int)(algo)
+	ctx.CodeContext().idct_algo = (C.int)(algo)
 }
 
 func (ctx *Context) BitsPerCodedSample() int {
-	return int(ctx.CAVCodecContext.bits_per_coded_sample)
+	return int(ctx.CodeContext().bits_per_coded_sample)
 }
 
 func (ctx *Context) SetBitsPerCodedSample(bits int) {
-	ctx.CAVCodecContext.bits_per_coded_sample = (C.int)(bits)
+	ctx.CodeContext().bits_per_coded_sample = (C.int)(bits)
 }
 
 func (ctx *Context) BitsPerRawSample() int {
-	return int(ctx.CAVCodecContext.bits_per_raw_sample)
+	return int(ctx.CodeContext().bits_per_raw_sample)
 }
 
 func (ctx *Context) SetBitsPerRawSample(bits int) {
-	ctx.CAVCodecContext.bits_per_raw_sample = (C.int)(bits)
+	ctx.CodeContext().bits_per_raw_sample = (C.int)(bits)
 }
 
 func (ctx *Context) LowRes() int {
-	return int(ctx.CAVCodecContext.lowres)
+	return int(ctx.CodeContext().lowres)
 }
 
 func (ctx *Context) SetLowRes(res int) {
-	ctx.CAVCodecContext.lowres = (C.int)(res)
+	ctx.CodeContext().lowres = (C.int)(res)
 }
 
 func (ctx *Context) ThreadCount() int {
-	return int(ctx.CAVCodecContext.thread_count)
+	return int(ctx.CodeContext().thread_count)
 }
 
 func (ctx *Context) SetThreadCount(count int) {
-	ctx.CAVCodecContext.thread_count = (C.int)(count)
+	ctx.CodeContext().thread_count = (C.int)(count)
 }
 
 func (ctx *Context) ThreadType() ThreadType {
-	return ThreadType(ctx.CAVCodecContext.thread_type)
+	return ThreadType(ctx.CodeContext().thread_type)
 }
 
 func (ctx *Context) SetThreadType(threadType ThreadType) {
-	ctx.CAVCodecContext.thread_type = (C.int)(threadType)
+	ctx.CodeContext().thread_type = (C.int)(threadType)
 }
 
 func (ctx *Context) ActiveThreadType() ThreadType {
-	return ThreadType(ctx.CAVCodecContext.active_thread_type)
+	return ThreadType(ctx.CodeContext().active_thread_type)
 }
 
 func (ctx *Context) SetActiveThreadType(threadType ThreadType) {
-	ctx.CAVCodecContext.active_thread_type = (C.int)(threadType)
+	ctx.CodeContext().active_thread_type = (C.int)(threadType)
 }
 
 func (ctx *Context) ThreadSafeCallbacks() int {
-	return int(ctx.CAVCodecContext.thread_safe_callbacks)
+	return int(ctx.CodeContext().thread_safe_callbacks)
 }
 
 func (ctx *Context) SetThreadSafeCallbacks(count int) {
-	ctx.CAVCodecContext.thread_safe_callbacks = (C.int)(count)
+	ctx.CodeContext().thread_safe_callbacks = (C.int)(count)
 }
 
 func (ctx *Context) NSSEWeight() int {
-	return int(ctx.CAVCodecContext.nsse_weight)
+	return int(ctx.CodeContext().nsse_weight)
 }
 
 func (ctx *Context) SetNSSEWeight(weight int) {
-	ctx.CAVCodecContext.nsse_weight = (C.int)(weight)
+	ctx.CodeContext().nsse_weight = (C.int)(weight)
 }
 
 func (ctx *Context) Profile() int {
-	return int(ctx.CAVCodecContext.profile)
+	return int(ctx.CodeContext().profile)
 }
 
 func (ctx *Context) SetProfile(profile int) {
-	ctx.CAVCodecContext.profile = (C.int)(profile)
+	ctx.CodeContext().profile = (C.int)(profile)
 }
 
 func (ctx *Context) Level() int {
-	return int(ctx.CAVCodecContext.level)
+	return int(ctx.CodeContext().level)
 }
 
 func (ctx *Context) SetLevel(level int) {
-	ctx.CAVCodecContext.level = (C.int)(level)
+	ctx.CodeContext().level = (C.int)(level)
 }
 func (ctx *Context) SubtitleHeaderSize() int {
-	return int(ctx.CAVCodecContext.subtitle_header_size)
+	return int(ctx.CodeContext().subtitle_header_size)
 }
 
 func (ctx *Context) SetSubtitleHeaderSize(size int) {
-	ctx.CAVCodecContext.subtitle_header_size = (C.int)(size)
+	ctx.CodeContext().subtitle_header_size = (C.int)(size)
 }
 
 func (ctx *Context) VBVDelay() uint64 {
-	return uint64(ctx.CAVCodecContext.vbv_delay)
+	return uint64(ctx.CodeContext().vbv_delay)
 }
 
 func (ctx *Context) SetVBVDelay(delay uint64) {
-	ctx.CAVCodecContext.vbv_delay = (C.uint64_t)(delay)
+	ctx.CodeContext().vbv_delay = (C.uint64_t)(delay)
 }
 
 func (ctx *Context) SideDataOnlyPackets() bool {
-	return ctx.CAVCodecContext.side_data_only_packets != C.int(0)
+	return ctx.CodeContext().side_data_only_packets != C.int(0)
 }
 
 func (ctx *Context) SetSideDataOnlyPackets(sideDataOnly bool) {
@@ -1798,48 +1820,48 @@ func (ctx *Context) SetSideDataOnlyPackets(sideDataOnly bool) {
 	if sideDataOnly {
 		cSideDataOnly = C.int(1)
 	}
-	ctx.CAVCodecContext.side_data_only_packets = cSideDataOnly
+	ctx.CodeContext().side_data_only_packets = cSideDataOnly
 }
 
 func (ctx *Context) InitialPadding() int {
-	return int(ctx.CAVCodecContext.initial_padding)
+	return int(ctx.CodeContext().initial_padding)
 }
 
 func (ctx *Context) SetInitialPadding(initialPadding int) {
-	ctx.CAVCodecContext.initial_padding = (C.int)(initialPadding)
+	ctx.CodeContext().initial_padding = (C.int)(initialPadding)
 }
 
 func (ctx *Context) FrameRate() *avutil.Rational {
-	return avutil.NewRationalFromC(unsafe.Pointer(&ctx.CAVCodecContext.framerate))
+	return avutil.NewRationalFromC(unsafe.Pointer(&ctx.CodeContext().framerate))
 }
 
 func (ctx *Context) SetFrameRate(frameRate *avutil.Rational) {
-	ctx.CAVCodecContext.framerate.num = (C.int)(frameRate.Numerator())
-	ctx.CAVCodecContext.framerate.den = (C.int)(frameRate.Denominator())
+	ctx.CodeContext().framerate.num = (C.int)(frameRate.Numerator())
+	ctx.CodeContext().framerate.den = (C.int)(frameRate.Denominator())
 }
 
 func (ctx *Context) PTSCorrectionLastPTS() int64 {
-	return int64(ctx.CAVCodecContext.pts_correction_last_pts)
+	return int64(ctx.CodeContext().pts_correction_last_pts)
 }
 
 func (ctx *Context) PTSCorrectionLastDTS() int64 {
-	return int64(ctx.CAVCodecContext.pts_correction_last_dts)
+	return int64(ctx.CodeContext().pts_correction_last_dts)
 }
 
 func (ctx *Context) SubtitlesEncoding() (string, bool) {
-	return cStringToStringOk(ctx.CAVCodecContext.sub_charenc)
+	return cStringToStringOk(ctx.CodeContext().sub_charenc)
 }
 
 func (ctx *Context) SubtitlesEncodingMode() SubtitlesEncodingMode {
-	return SubtitlesEncodingMode(ctx.CAVCodecContext.sub_charenc_mode)
+	return SubtitlesEncodingMode(ctx.CodeContext().sub_charenc_mode)
 }
 
 func (ctx *Context) SetSubtitlesEncodingMode(mode SubtitlesEncodingMode) {
-	ctx.CAVCodecContext.sub_charenc_mode = (C.int)(mode)
+	ctx.CodeContext().sub_charenc_mode = (C.int)(mode)
 }
 
 func (ctx *Context) SkipAlpha() bool {
-	return ctx.CAVCodecContext.skip_alpha != C.int(0)
+	return ctx.CodeContext().skip_alpha != C.int(0)
 }
 
 func (ctx *Context) SetSkipAlpha(skip bool) {
@@ -1847,31 +1869,31 @@ func (ctx *Context) SetSkipAlpha(skip bool) {
 	if skip {
 		cSkip = C.int(1)
 	}
-	ctx.CAVCodecContext.skip_alpha = cSkip
+	ctx.CodeContext().skip_alpha = cSkip
 }
 
 func (ctx *Context) SeekPreRoll() int {
-	return int(ctx.CAVCodecContext.seek_preroll)
+	return int(ctx.CodeContext().seek_preroll)
 }
 
 func (ctx *Context) SetSeekPreRoll(seek int) {
-	ctx.CAVCodecContext.seek_preroll = (C.int)(seek)
+	ctx.CodeContext().seek_preroll = (C.int)(seek)
 }
 
 func (ctx *Context) CodecWhitelist() []string {
-	return cStringSplit(ctx.CAVCodecContext.codec_whitelist, ",")
+	return cStringSplit(ctx.CodeContext().codec_whitelist, ",")
 }
 
 func (ctx *Context) StatsIn() []byte {
-	if ctx.CAVCodecContext.stats_in == nil {
+	if ctx.CodeContext().stats_in == nil {
 		return nil
 	}
-	length := int(C.strlen(ctx.CAVCodecContext.stats_in))
-	return (*[1 << 30]byte)(unsafe.Pointer(ctx.CAVCodecContext.stats_in))[:length:length]
+	length := int(C.strlen(ctx.CodeContext().stats_in))
+	return (*[1 << 30]byte)(unsafe.Pointer(ctx.CodeContext().stats_in))[:length:length]
 }
 
 func (ctx *Context) SetStatsIn(in []byte) error {
-	C.av_freep(unsafe.Pointer(&ctx.CAVCodecContext.stats_in))
+	C.av_freep(unsafe.Pointer(&ctx.CodeContext().stats_in))
 	if len(in) == 0 {
 		return nil
 	}
@@ -1884,20 +1906,20 @@ func (ctx *Context) SetStatsIn(in []byte) error {
 		C.memcpy(unsafe.Pointer(cIn), unsafe.Pointer(&in[0]), C.size_t(length))
 	}
 	C.memset(unsafe.Pointer(uintptr(unsafe.Pointer(cIn))+uintptr(length)), 0, 1)
-	ctx.CAVCodecContext.stats_in = cIn
+	ctx.CodeContext().stats_in = cIn
 	return nil
 }
 
 func (ctx *Context) StatsOut() []byte {
-	if ctx.CAVCodecContext.stats_out == nil {
+	if ctx.CodeContext().stats_out == nil {
 		return nil
 	}
-	length := int(C.strlen(ctx.CAVCodecContext.stats_out))
-	return (*[1 << 30]byte)(unsafe.Pointer(ctx.CAVCodecContext.stats_out))[:length:length]
+	length := int(C.strlen(ctx.CodeContext().stats_out))
+	return (*[1 << 30]byte)(unsafe.Pointer(ctx.CodeContext().stats_out))[:length:length]
 }
 
 func (ctx *Context) SetStatsOut(out []byte) error {
-	C.av_freep(unsafe.Pointer(&ctx.CAVCodecContext.stats_out))
+	C.av_freep(unsafe.Pointer(&ctx.CodeContext().stats_out))
 	if len(out) == 0 {
 		return nil
 	}
@@ -1910,7 +1932,7 @@ func (ctx *Context) SetStatsOut(out []byte) error {
 		C.memcpy(unsafe.Pointer(cOut), unsafe.Pointer(&out[0]), C.size_t(length))
 	}
 	C.memset(unsafe.Pointer(uintptr(unsafe.Pointer(cOut))+uintptr(length)), 0, 1)
-	ctx.CAVCodecContext.stats_out = cOut
+	ctx.CodeContext().stats_out = cOut
 	return nil
 }
 
