@@ -1595,7 +1595,6 @@ func (a *AudioFifo) Peek(maxSamples int, frame *Frame) (int, error) {
 func (a *AudioFifo) PeekAt(nb_samples, offset int, frame *Frame) (int, error) {
 	cNbSamples := C.int(nb_samples)
 	cOffset := C.int(offset)
-
 	// Make sure these are set correctly here
 	frame.SetSampleFormat(a.SampleFmt)
 	frame.SetChannelLayout(a.ChannelLayout)
