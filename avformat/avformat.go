@@ -940,7 +940,11 @@ func (ctx *Context) ControlMessage(msg int, data interface{}) error {
 	pointer := unsafe.Pointer(nil)
 	if data != nil {
 		//Convert data to an unsafe pointer
-		cData := C.int64_t(data.(int64))
+		i64Data, ok := data.(int64)
+		if !ok {
+			return errors.New("Data is not an int64")
+		}
+		cData := C.int64_t(i64Data)
 		pointer = unsafe.Pointer(&cData)
 	}
 
@@ -954,6 +958,18 @@ func (ctx *Context) ControlMessage(msg int, data interface{}) error {
 func (ctx *Context) InterruptBlockingOperation() {
 	data := C.int(1)
 	ctx.CAVFormatContext.interrupt_callback.opaque = unsafe.Pointer(&data)
+}
+
+func (ctx *Context) GetOutputTimestamp(streamIdx int) (int, int, error) {
+	var dts C.int64_t
+	var wall C.int64_t
+	cStreamIdx := C.int(streamIdx)
+	code := C.av_get_output_timestamp(ctx.CAVFormatContext, cStreamIdx,
+		&dts, &wall)
+	if code < 0 {
+		return 0, 0, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return int(dts), int(wall), nil
 }
 
 type IOContext struct {
