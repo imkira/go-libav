@@ -6,18 +6,18 @@
 //
 // Tested with
 //
-// go run transcoder.go --input=https://bintray.com/imkira/go-libav/download_file?file_path=sample_iPod.m4v --output=output.mp4
-// go run transcoder.go --input=https://bintray.com/imkira/go-libav/download_file?file_path=sample_iPod.m4v --output=output.avi
+// go run transcoder.go --input=https://bintray.com/baohavan/go-libav/download_file?file_path=sample_iPod.m4v --output=output.mp4
+// go run transcoder.go --input=https://bintray.com/baohavan/go-libav/download_file?file_path=sample_iPod.m4v --output=output.avi
 package main
 
 import (
 	"flag"
 	"log"
 
-	"github.com/imkira/go-libav/avcodec"
-	"github.com/imkira/go-libav/avfilter"
-	"github.com/imkira/go-libav/avformat"
-	"github.com/imkira/go-libav/avutil"
+	"github.com/baohavan/go-libav/avcodec"
+	"github.com/baohavan/go-libav/avfilter"
+	"github.com/baohavan/go-libav/avformat"
+	"github.com/baohavan/go-libav/avutil"
 )
 
 var inputFileName, outputFileName string
