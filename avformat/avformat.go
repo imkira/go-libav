@@ -733,9 +733,9 @@ func (ctx *Context) WriteFrame(pkt *avcodec.Packet) error {
 	return nil
 }
 
-func (ctx *Context) InterleavedWriteFrame(pkt *avcodec.Packet) error {
+func (ctx *Context) InterleavedWriteFrame(pkt avcodec.Packet) error {
 	var cPkt *C.AVPacket
-	if pkt != nil {
+	if pkt.CAVPacket != 0 {
 		cPkt = (*C.AVPacket)(unsafe.Pointer(pkt.CAVPacket))
 	}
 	code := C.av_interleaved_write_frame(ctx.FormatContext(), cPkt)
@@ -968,6 +968,7 @@ func (ctx *IOContext) Close() error {
 	if ctx.CAVIOContext != 0 {
 		cIOCtx := ctx.IOContext()
 		code := C.go_avio_closep(cIOCtx)
+		ctx.CAVIOContext = 0
 		if code < 0 {
 			return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		}
