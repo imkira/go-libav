@@ -701,6 +701,14 @@ func (ctx *Context) WriteHeader(options *avutil.Dictionary) error {
 	return nil
 }
 
+func (ctx *Context) WriteHeader2() error {
+	code := C.avformat_write_header(ctx.FormatContext(), nil)
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return nil
+}
+
 func (ctx *Context) WriteTrailer() error {
 	code := C.av_write_trailer(ctx.FormatContext())
 	if code < 0 {
