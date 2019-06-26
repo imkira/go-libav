@@ -933,26 +933,27 @@ func (ctx *Context) SeekToTimestamp(streamIndex int, min, target, max int64, fla
 	return nil
 }
 
-func (ctx *Context) ControlMessage(msg int, data interface{}) error {
+func (ctx *Context) ControlMessage(msg int, data interface{}) (int64, error) {
 	if ctx.Output() == nil {
-		return errors.New("No output found")
+		return 0, errors.New("No output found")
 	}
+	var cData C.int64_t
 	pointer := unsafe.Pointer(nil)
 	if data != nil {
 		//Convert data to an unsafe pointer
 		i64Data, ok := data.(int64)
 		if !ok {
-			return errors.New("Data is not an int64")
+			return 0, errors.New("Data is not an int64")
 		}
-		cData := C.int64_t(i64Data)
+		cData = C.int64_t(i64Data)
 		pointer = unsafe.Pointer(&cData)
 	}
 
 	code := C.exec_cb(ctx.Output().CAVOutputFormat.control_message, ctx.CAVFormatContext, C.int(msg), pointer, 0)
 	if code < 0 {
-		return avutil.NewErrorFromCode(avutil.ErrorCode(code))
+		return 0, avutil.NewErrorFromCode(avutil.ErrorCode(code))
 	}
-	return nil
+	return int64(cData), nil
 }
 
 func (ctx *Context) InterruptBlockingOperation() {
