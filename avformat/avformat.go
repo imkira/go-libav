@@ -939,15 +939,16 @@ func (ctx *Context) ControlMessage(msg int, data interface{}) (int64, error) {
 	}
 	var cData C.int64_t
 	pointer := unsafe.Pointer(nil)
-	if data != nil {
-		//Convert data to an unsafe pointer
-		i64Data, ok := data.(int64)
-		if !ok {
-			return 0, errors.New("Data is not an int64")
-		}
-		cData = C.int64_t(i64Data)
-		pointer = unsafe.Pointer(&cData)
+	if data == nil {
+		data = int64(0)
 	}
+	//Convert data to an unsafe pointer
+	i64Data, ok := data.(int64)
+	if !ok {
+		return 0, errors.New("Data is not an int64")
+	}
+	cData = C.int64_t(i64Data)
+	pointer = unsafe.Pointer(&cData)
 
 	code := C.exec_cb(ctx.Output().CAVOutputFormat.control_message, ctx.CAVFormatContext, C.int(msg), pointer, 0)
 	if code < 0 {
