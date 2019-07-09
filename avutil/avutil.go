@@ -85,6 +85,8 @@ const (
 	LogLevelTrace   LogLevel = C.GO_AV_LOG_TRACE
 )
 
+const NoPtsValue int64 = C.AV_NOPTS_VALUE
+
 type MediaType C.enum_AVMediaType
 
 const (
