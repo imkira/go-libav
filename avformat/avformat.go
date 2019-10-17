@@ -40,7 +40,7 @@ package avformat
 //   return fn(s, type, data, data_size);
 // }
 // int interrupt_cb(void* data) {
-//	return (intptr_t)data;
+//	return data==NULL ? 0 : *((int*)data);
 // }
 // void set_interrupt_cb(AVFormatContext *c) {
 //	  c->interrupt_callback.callback = interrupt_cb;
@@ -959,6 +959,11 @@ func (ctx *Context) ControlMessage(msg int, data interface{}) (int64, error) {
 
 func (ctx *Context) InterruptBlockingOperation() {
 	data := C.int(1)
+	ctx.CAVFormatContext.interrupt_callback.opaque = unsafe.Pointer(&data)
+}
+
+func (ctx *Context) UninterruptBlockingOperation() {
+	data := C.int(0)
 	ctx.CAVFormatContext.interrupt_callback.opaque = unsafe.Pointer(&data)
 }
 
