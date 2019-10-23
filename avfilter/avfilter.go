@@ -35,6 +35,7 @@ import "C"
 
 import (
 	"errors"
+	"strings"
 	"unsafe"
 
 	"github.com/SpalkLtd/go-libav/avutil"
@@ -402,14 +403,28 @@ func (ctx *Context) FrameRate() *avutil.Rational {
 	return avutil.NewRationalFromC(unsafe.Pointer(&r))
 }
 
-func (ctx *Context) SendCommand(cmd, args string) error {
+func (ctx *Context) SendCommand(cmd, args string, returnLength int) (string, error) {
 	cmdString := C.CString(cmd)
 	argsString := C.CString(args)
-	code := C.avfilter_process_command(ctx.CAVFilterContext, cmdString, argsString, nil, 0, C.int(0))
-	if code < 0 {
-		return avutil.NewErrorFromCode(avutil.ErrorCode(int(code)))
+	var res *C.char
+	var res_len C.int
+	if returnLength > 0 {
+		var str strings.Builder
+
+		for i := 0; i < returnLength; i++ {
+			str.WriteString("a")
+		}
+		res = C.CString(str.String())
+		res_len = C.int(returnLength)
 	}
-	return nil
+	code := C.avfilter_process_command(ctx.CAVFilterContext, cmdString, argsString, res, res_len, C.int(0))
+	if code < 0 {
+		return "", avutil.NewErrorFromCode(avutil.ErrorCode(int(code)))
+	}
+	if returnLength > 0 {
+		return C.GoString(res), nil
+	}
+	return "", nil
 }
 
 type Graph struct {
