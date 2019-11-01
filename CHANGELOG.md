@@ -6,3 +6,4 @@
 - Expose the AV_NO_PTS_VALUE in avutil
 - Add ability to unset the 'interrupt' flag for a fmt context so you can stop it returning AVERROR_EXIT
 - Change avfilter.Context.SendCommand to return (string, error) so we can read the return data. User now sets the expected length and go allocates a buffer
+- Adds a packet.Copy method
