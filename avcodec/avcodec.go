@@ -314,7 +314,6 @@ func Version() (int, int, int) {
 	return int(C.GO_AVCODEC_VERSION_MAJOR), int(C.GO_AVCODEC_VERSION_MINOR), int(C.GO_AVCODEC_VERSION_MICRO)
 }
 
-
 func RegisterAll() {
 	C.avcodec_register_all()
 }
@@ -361,6 +360,19 @@ func NewPacket() (*Packet, error) {
 		return nil, ErrAllocationError
 	}
 	return NewPacketFromC(unsafe.Pointer(cPkt)), nil
+}
+
+func (pkt *Packet) Copy() (*Packet, error) {
+	newpacket, err := NewPacket()
+	if err != nil {
+		return newpacket, err
+	}
+	C.av_init_packet(newpacket.CAVPacket)
+	code := C.av_packet_ref(newpacket.CAVPacket, pkt.CAVPacket)
+	if code < 0 {
+		return newpacket, avutil.NewErrorFromCode(avutil.ErrorCode(code))
+	}
+	return newpacket, nil
 }
 
 func NewPacketFromC(cPkt unsafe.Pointer) *Packet {
