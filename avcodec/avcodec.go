@@ -115,6 +115,10 @@ package avcodec
 //  return list[idx];
 //}
 //
+//static uint8_t go_get_data_at(uint8_t *arr, int index) {
+//    return arr[index];
+//}
+//
 // int GO_AVCODEC_VERSION_MAJOR = LIBAVCODEC_VERSION_MAJOR;
 // int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
 // int GO_AVCODEC_VERSION_MICRO = LIBAVCODEC_VERSION_MICRO;
@@ -435,6 +439,15 @@ func (pkt *Packet) SetDuration(duration int64) {
 
 func (pkt *Packet) Data() unsafe.Pointer {
 	return unsafe.Pointer(pkt.CAVPacket.data)
+}
+
+func (pkt *Packet) GetData() []byte {
+	pktSize := pkt.Size()
+	data := make([]byte, pktSize)
+	for i := 0; i < pktSize; i++ {
+		data[i] = byte(C.go_get_data_at((*C.uint8_t)(pkt.Data()), C.int(i)))
+	}
+	return data
 }
 
 func (pkt *Packet) SetData(data unsafe.Pointer) {
