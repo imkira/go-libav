@@ -118,6 +118,9 @@ package avcodec
 //static uint8_t go_get_data_at(uint8_t *arr, int index) {
 //    return arr[index];
 //}
+//static void set_data_at(uint8_t *arr, int index, uint8_t data) {
+//	  arr[index] = data;
+//}
 //
 // int GO_AVCODEC_VERSION_MAJOR = LIBAVCODEC_VERSION_MAJOR;
 // int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
@@ -448,6 +451,10 @@ func (pkt *Packet) GetData() []byte {
 		data[i] = byte(C.go_get_data_at((*C.uint8_t)(pkt.Data()), C.int(i)))
 	}
 	return data
+}
+
+func (pkt *Packet) GetDataAt(index int) byte {
+	return byte(C.go_get_data_at((*C.uint8_t)(pkt.Data()), C.int(index)))
 }
 
 func (pkt *Packet) SetData(data unsafe.Pointer) {

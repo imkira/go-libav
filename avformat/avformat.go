@@ -46,6 +46,9 @@ package avformat
 //	  c->interrupt_callback.callback = interrupt_cb;
 //	  c->interrupt_callback.opaque = 0;
 //}
+// void write_at(unsigned char * buf, unsigned long i, unsigned char b) {
+//	  buf[i] = b;
+//}
 //
 //
 // #cgo LDFLAGS: -lavformat -lavutil
@@ -1016,6 +1019,29 @@ func (ctx *IOContext) Close() error {
 		if code < 0 {
 			return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		}
+	}
+	return nil
+}
+
+func (ctx *IOContext) Write(packet unsafe.Pointer, size int) {
+	cSize := C.int(size)
+	C.avio_write(ctx.CAVIOContext, (*C.uchar)(packet), cSize)
+}
+
+func (ctx *IOContext) WriteBytes(b []byte) {
+	size := C.ulong(len(b))
+	buf := C.av_mallocz(size)
+	for i := C.ulong(0); i < size; i++ {
+		C.write_at((*C.uchar)(buf), i, C.uchar(b[i]))
+	}
+	ctx.Write(buf, len(b))
+	C.av_free(buf)
+}
+
+func (ctx *IOContext) Error() error {
+	code := (*ctx.CAVIOContext).error
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(int(code)))
 	}
 	return nil
 }
