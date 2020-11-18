@@ -2,12 +2,24 @@
 
 package avcodec
 
-import "C"
-
 //#include <libavutil/avutil.h>
 //#include <libavcodec/avcodec.h>
 //
+//#ifdef CODEC_CAP_HWACCEL
+//#define GO_CODEC_CAP_HWACCEL CODEC_CAP_HWACCEL
+//#else
+//#define GO_CODEC_CAP_HWACCEL 0
+//#endif
+//
+//#ifdef CODEC_CAP_HWACCEL_VDPAU
+//#define GO_CODEC_CAP_HWACCEL_VDPAU CODEC_CAP_HWACCEL_VDPAU
+//#else
+//#define GO_CODEC_CAP_HWACCEL_VDPAU 0
+//#endif
+//
 // #cgo LDFLAGS: -lavcodec -lavutil
+import "C"
+
 type Flags int
 
 const (
