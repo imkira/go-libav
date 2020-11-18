@@ -84,10 +84,9 @@ func (ctx *Context) SetInterruptCallback() {
 type Flags int
 
 const (
-	FlagNoFile     Flags = C.AVFMT_NOFILE
-	FlagNeedNumber Flags = C.AVFMT_NEEDNUMBER
-	FlagShowIDs    Flags = C.AVFMT_SHOW_IDS
-	// FlagRawPicture   Flags = C.AVFMT_RAWPICTURE
+	FlagNoFile       Flags = C.AVFMT_NOFILE
+	FlagNeedNumber   Flags = C.AVFMT_NEEDNUMBER
+	FlagShowIDs      Flags = C.AVFMT_SHOW_IDS
 	FlagGlobalHeader Flags = C.AVFMT_GLOBALHEADER
 	FlagNoTimestamps Flags = C.AVFMT_NOTIMESTAMPS
 	FlagGenericIndex Flags = C.AVFMT_GENERIC_INDEX
