@@ -4,6 +4,7 @@ package avformat
 //#include <libavutil/avstring.h>
 //#include <libavcodec/avcodec.h>
 //#include <libavformat/avformat.h>
+//#include <stdlib.h>
 //
 //#ifdef AVFMT_FLAG_FAST_SEEK
 //#define GO_AVFMT_FLAG_FAST_SEEK AVFMT_FLAG_FAST_SEEK
@@ -84,7 +85,6 @@ const (
 	FlagNoFile       Flags = C.AVFMT_NOFILE
 	FlagNeedNumber   Flags = C.AVFMT_NEEDNUMBER
 	FlagShowIDs      Flags = C.AVFMT_SHOW_IDS
-	FlagRawPicture   Flags = C.AVFMT_RAWPICTURE
 	FlagGlobalHeader Flags = C.AVFMT_GLOBALHEADER
 	FlagNoTimestamps Flags = C.AVFMT_NOTIMESTAMPS
 	FlagGenericIndex Flags = C.AVFMT_GENERIC_INDEX
@@ -1016,6 +1016,25 @@ func (ctx *IOContext) Close() error {
 		if code < 0 {
 			return avutil.NewErrorFromCode(avutil.ErrorCode(code))
 		}
+	}
+	return nil
+}
+
+func (ctx *IOContext) Write(packet unsafe.Pointer, size int) {
+	cSize := C.int(size)
+	C.avio_write(ctx.CAVIOContext, (*C.uchar)(packet), cSize)
+}
+
+func (ctx *IOContext) WriteBytes(b []byte) {
+	buf := C.CBytes(b)
+	ctx.Write(buf, len(b))
+	C.free(buf)
+}
+
+func (ctx *IOContext) Error() error {
+	code := (*ctx.CAVIOContext).error
+	if code < 0 {
+		return avutil.NewErrorFromCode(avutil.ErrorCode(int(code)))
 	}
 	return nil
 }
