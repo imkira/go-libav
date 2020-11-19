@@ -4,6 +4,7 @@ package avformat
 //#include <libavutil/avstring.h>
 //#include <libavcodec/avcodec.h>
 //#include <libavformat/avformat.h>
+//#include <stdlib.h>
 //
 //#ifdef AVFMT_FLAG_FAST_SEEK
 //#define GO_AVFMT_FLAG_FAST_SEEK AVFMT_FLAG_FAST_SEEK
@@ -45,9 +46,6 @@ package avformat
 // void set_interrupt_cb(AVFormatContext *c) {
 //	  c->interrupt_callback.callback = interrupt_cb;
 //	  c->interrupt_callback.opaque = 0;
-//}
-// void write_at(unsigned char * buf, unsigned long i, unsigned char b) {
-//	  buf[i] = b;
 //}
 //
 //
@@ -1028,13 +1026,9 @@ func (ctx *IOContext) Write(packet unsafe.Pointer, size int) {
 }
 
 func (ctx *IOContext) WriteBytes(b []byte) {
-	size := C.ulong(len(b))
-	buf := C.av_mallocz(size)
-	for i := C.ulong(0); i < size; i++ {
-		C.write_at((*C.uchar)(buf), i, C.uchar(b[i]))
-	}
+	buf := C.CBytes(b)
 	ctx.Write(buf, len(b))
-	C.av_free(buf)
+	C.free(buf)
 }
 
 func (ctx *IOContext) Error() error {

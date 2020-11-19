@@ -107,9 +107,6 @@ package avcodec
 //static uint8_t go_get_data_at(uint8_t *arr, int index) {
 //    return arr[index];
 //}
-//static void set_data_at(uint8_t *arr, int index, uint8_t data) {
-//	  arr[index] = data;
-//}
 //
 // int GO_AVCODEC_VERSION_MAJOR = LIBAVCODEC_VERSION_MAJOR;
 // int GO_AVCODEC_VERSION_MINOR = LIBAVCODEC_VERSION_MINOR;
@@ -405,9 +402,9 @@ func (pkt *Packet) SetBytes(b []byte) error {
 			return avutil.NewErrorFromCode(avutil.ErrorCode(ret))
 		}
 	}
-	for i := 0; i < len(b); i++ {
-		C.set_data_at(pkt.CAVPacket.data, C.int(i), (C.uint8_t)(b[i]))
-	}
+	buf := C.CBytes(b)
+	C.memcpy(unsafe.Pointer(pkt.CAVPacket.data), buf, C.ulong(len(b)))
+	C.free(buf)
 	pkt.CAVPacket.size = size
 	return nil
 }
