@@ -10,3 +10,7 @@
 - Increment version to compile against 4.3
 - Add `avcodec.Packet.Write`, `avcodec.Packet.WriteBytes`, `avcodec.Packet.GetDataAt` methods
 - Add `avcodec.IOContext.Error` method
+- Add `avcodec.IOContext.Flush` method
+- Use go builtin to get go byte array from C
+- Add `avcodec.Packet.GetDataInto` to get data into an existing go byte array
+- Make `avcodec.Packet.Free` a noop on a nil packet (aligns with libav convention)

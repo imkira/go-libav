@@ -314,7 +314,9 @@ func NewPacketFromC(cPkt unsafe.Pointer) *Packet {
 }
 
 func (pkt *Packet) Free() {
-	C.av_packet_free(&pkt.CAVPacket)
+	if pkt.CAVPacket != nil {
+		C.av_packet_free(&pkt.CAVPacket)
+	}
 }
 
 func (pkt *Packet) Ref(dst *Packet) error {
@@ -372,12 +374,16 @@ func (pkt *Packet) Data() unsafe.Pointer {
 }
 
 func (pkt *Packet) GetData() []byte {
-	pktSize := pkt.Size()
-	data := make([]byte, pktSize)
-	for i := 0; i < pktSize; i++ {
-		data[i] = byte(C.go_get_data_at((*C.uint8_t)(pkt.Data()), C.int(i)))
+	return C.GoBytes(pkt.Data(), C.int(pkt.Size()))
+}
+
+func (pkt *Packet) GetDataInto(b []byte) error {
+	data := pkt.GetData()
+	if len(data) >= len(b) {
+		return errors.New("avcodec: dst array too short")
 	}
-	return data
+	copy(b, data)
+	return nil
 }
 
 func (pkt *Packet) GetDataAt(index int) byte {

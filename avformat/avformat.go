@@ -1039,6 +1039,10 @@ func (ctx *IOContext) Error() error {
 	return nil
 }
 
+func (ctx *IOContext) Flush() {
+	C.avio_flush(ctx.CAVIOContext)
+}
+
 func boolToCInt(b bool) C.int {
 	if b {
 		return 1
